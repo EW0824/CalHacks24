@@ -88,6 +88,8 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 				},
 			);
 
+			console.log(expressionResponse)
+
 			const voiceResponse = await axios.post(
 				"http://localhost:8080/api/postVoice",
 				formData,

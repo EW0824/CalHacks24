@@ -4,9 +4,161 @@ import subprocess
 import whisper
 import tempfile
 from flask import Flask, request, jsonify
+import glob
+import asyncio
+from moviepy.editor import VideoFileClip
+from hume import AsyncHumeClient
+from hume.expression_measurement.batch import Face, Models
+from hume.expression_measurement.batch.types import InferenceBaseRequest
+from datetime import datetime
+from dotenv import load_dotenv
+
+load_dotenv()
+API_KEY = os.getenv("API_KEY")
 
 app = Flask(__name__)
 
+def split_video(file, segment_length, output_dir):
+    with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_file:
+        temp_file.write(file.read())
+        temp_file.flush()
+
+        print("Enter split video")
+        clip = VideoFileClip(temp_file.name)
+        print(clip)
+        duration = clip.duration
+
+        start_time = 0
+        i = 1
+
+        # Extract the filename without extension
+        # Create output directory if it doesn't exist
+        os.makedirs(output_dir, exist_ok=True)
+        print(output_dir)
+        while start_time < duration:
+            end_time = min(start_time + segment_length, duration)
+            output = os.path.join(output_dir, f"{i}.mp4")
+            clip.subclip(start_time, end_time).write_videofile(output, codec='libx264', audio_codec='aac')
+            start_time = end_time
+            i += 1
+        return i - 1
+
+def get_top_3_facs(predictions):
+    top_facs_per_clip = []  # List to hold results for all clips
+
+    for pred in predictions:  # Each file
+        print("source")
+        print(pred.source)
+        
+        for prediction in pred.results.predictions:  # Per file
+            print(f"file: {prediction.file}")
+            facs_map = {}
+            
+            for grouped_preds in prediction.models.face.grouped_predictions:
+                for pred in grouped_preds.predictions:  # Per frame per file
+                    facs = pred.facs
+                    
+                    for facs_score in facs:
+                        # Store the score along with the file name
+                        if facs_score.name not in facs_map:
+                            facs_map[facs_score.name] = (facs_score.score, prediction.file)
+                        else:
+                            # Update the score, but keep the same file name
+                            existing_score, _ = facs_map[facs_score.name]
+                            facs_map[facs_score.name] = (existing_score + facs_score.score, prediction.file)
+            
+            # Average the scores by the number of frames (assuming 15 frames)
+            for key in facs_map.keys():
+                score, file = facs_map[key]
+                facs_map[key] = (score / 15.0, file)
+            
+            # Get the top 3 FACS scores sorted by score
+            top_3_facs = sorted(facs_map.items(), key=lambda x: x[1][0], reverse=True)[:3]
+            
+            # Store the top FACS scores for this clip
+            top_facs_per_clip.extend((facs_name, score, file) for facs_name, (score, file) in top_3_facs)
+
+    return top_facs_per_clip
+
+async def process_videos_hume(client, files):
+    face_config = Face(facs={})
+    models_chosen = Models(face=face_config)
+    stringified_configs = InferenceBaseRequest(models=models_chosen)
+
+    job_id = await client.expression_measurement.batch.start_inference_job_from_local_file(
+        json=stringified_configs, file=files
+    )
+    await poll_for_completion(client, job_id)
+    job_predictions = await client.expression_measurement.batch.get_job_predictions(id=job_id)
+    top_facs_scores = get_top_3_facs(job_predictions)
+    return top_facs_scores
+
+async def poll_for_completion(client: AsyncHumeClient, job_id, timeout=120):
+    """
+    Polls for the completion of a job with a specified timeout (in seconds).
+
+    Uses asyncio.wait_for to enforce a maximum waiting time.
+    """
+    try:
+        # Wait for the job to complete or until the timeout is reached
+        await asyncio.wait_for(poll_until_complete(client, job_id), timeout=timeout)
+    except asyncio.TimeoutError:
+        # Notify if the polling operation has timed out
+        print(f"Polling timed out after {timeout} seconds.")
+
+
+async def poll_until_complete(client: AsyncHumeClient, job_id):
+    """
+    Continuously polls the job status until it is completed, failed, or an unexpected status is encountered.
+
+    Implements exponential backoff to reduce the frequency of requests over time.
+    """
+    last_status = None
+    delay = 1  # Start with a 1-second delay
+
+    while True:
+        # Wait for the specified delay before making the next status check
+        await asyncio.sleep(delay)
+
+        # Retrieve the current job details
+        job_details = await client.expression_measurement.batch.get_job_details(job_id)
+        status = job_details.state.status
+
+        # If the status has changed since the last check, print the new status
+        if status != last_status:
+            print(f"Status changed: {status}")
+            last_status = status
+
+        if status == "COMPLETED":
+            # Job has completed successfully
+            print("\nJob completed successfully:")
+            # Convert timestamps from milliseconds to datetime objects
+            created_time = datetime.fromtimestamp(job_details.state.created_timestamp_ms / 1000)
+            started_time = datetime.fromtimestamp(job_details.state.started_timestamp_ms / 1000)
+            ended_time = datetime.fromtimestamp(job_details.state.ended_timestamp_ms / 1000)
+            # Print job details neatly
+            print(f"  Created at: {created_time}")
+            print(f"  Started at: {started_time}")
+            print(f"  Ended at:   {ended_time}")
+            print(f"  Number of errors: {job_details.state.num_errors}")
+            print(f"  Number of predictions: {job_details.state.num_predictions}")
+            break
+        elif status == "FAILED":
+            # Job has failed
+            print("\nJob failed:")
+            # Convert timestamps from milliseconds to datetime objects
+            created_time = datetime.fromtimestamp(job_details.state.created_timestamp_ms / 1000)
+            started_time = datetime.fromtimestamp(job_details.state.started_timestamp_ms / 1000)
+            ended_time = datetime.fromtimestamp(job_details.state.ended_timestamp_ms / 1000)
+            # Print error details neatly
+            print(f"  Created at: {created_time}")
+            print(f"  Started at: {started_time}")
+            print(f"  Ended at:   {ended_time}")
+            print(f"  Error message: {job_details.state.message}")
+            break
+
+        # Increase the delay exponentially, maxing out at 16 seconds
+        delay = min(delay * 2, 16)
 
 def add_cors_headers(response):
     response.headers.add("Access-Control-Allow-Origin", "*")
@@ -88,24 +240,45 @@ def upload_video() -> tuple:
 
 
 @app.route("/api/postExpressions", methods=["POST", "OPTIONS"])
-def return_expressions() -> tuple:
+async def return_expressions() -> tuple:
     if request.method == "OPTIONS":
         return jsonify({}), 200  # Respond to preflight request
 
-    if "file" not in request.files:
-        return jsonify({"error": "No file part in the request"}), 400
-
     file = request.files["file"]
+    print(file)
     if not file.filename:
         return jsonify({"error": "No file selected for uploading"}), 400
 
     try:
+        print("Entered try")
+        output_folder = './split_videos'
+        segment_length = 5  # Change to your desired segment length
+
         video_buffer = io.BytesIO()
         file.save(video_buffer)
         video_buffer.seek(0)
 
-        behaviors = {"a": 30, "b": 40, "c": 30}
-        return jsonify({"behaviors": behaviors}), 200
+        # Split the video into segments
+        split_video(video_buffer, segment_length, output_folder)
+        # Initialize Hume client
+        client = AsyncHumeClient(api_key=API_KEY)
+        print("init client")
+        
+        video_files = glob.glob("./split_videos/*.mp4")
+        local_filepaths = [open(file, "rb") for file in video_files]
+        face_config = Face(facs={})
+        models_chosen = Models(face=face_config)
+        stringified_configs = InferenceBaseRequest(models=models_chosen)
+        job_id = await client.expression_measurement.batch.start_inference_job_from_local_file(json=stringified_configs, file=local_filepaths)
+        print("about to poll")
+        await poll_for_completion(client, job_id, timeout=120)
+        print("polling")
+        job_predictions = await client.expression_measurement.batch.get_job_predictions(id=job_id)
+        print("predictions")
+        top_facs_scores = get_top_3_facs(job_predictions)
+        print("top faces")
+        return jsonify({"top_facs_scores": top_facs_scores}), 200 
+      
     except Exception as e:
         print(f"Error processing expressions: {e}")
         return jsonify({"error": str(e)}), 500
