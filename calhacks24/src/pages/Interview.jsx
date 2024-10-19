@@ -2,14 +2,17 @@ import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import interviewerImage from "/interviewer.jpg"; // Ensure this path is correct
 import { SunIcon, MoonIcon } from "@heroicons/react/outline"; // Install heroicons if you haven't
+import Modal from "../components/Modal.jsx";
 
 // could be interviewer based for practice
 // could be for companies to evaluate people
 const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
+	const [isModalVisible, setModalVisible] = useState(false); // State to control modal visibility
 	const videoRef = useRef(null); // Create a ref to the video element
 	const mediaRecorderRef = useRef(null); // Ref for MediaRecorder
 	const [isInterviewing, setIsInterviewing] = useState(false); // State to manage interview status
 	const mediaStream = useRef(null); // Store media stream reference
+	const [loading, setLoading] = useState(true);
 
 	const startVideo = async () => {
 		try {
@@ -71,17 +74,26 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 	};
 
 	const uploadVideo = async (videoBlob) => {
+		setModalVisible(true); // Show the modal when starting the upload
 		try {
 			const formData = new FormData();
 			formData.append("file", videoBlob, "recording.mp4");
 
-			await axios.put("/api/putExpressions", formData, {
+			const expressionResponse = await axios.post(
+				"/api/putExpressions",
+				formData,
+				{
+					headers: { "Content-Type": "multipart/form-data" },
+				},
+			);
+
+			const voiceResponse = await axios.put("/api/putVoice", formData, {
 				headers: { "Content-Type": "multipart/form-data" },
 			});
-			await axios.put("/api/putVoice", formData, {
-				headers: { "Content-Type": "multipart/form-data" },
-			});
+
+			setLoading(false);
 		} catch (error) {
+			setModalVisible(false);
 			console.error(error);
 		}
 	};
@@ -161,7 +173,7 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 			</header>
 
 			<div
-				className={`relative w-full max-w-4xl ${isDarkTheme ? "bg-gray-800" : "bg-white"} shadow-md rounded-lg p-4 mb-4`}
+				className={`relative w-full max-w-4xl ${isDarkTheme ? "bg-gray-900" : "bg-white"} shadow-md rounded-lg mb-4 m-6`}
 			>
 				{/* Interviewer Box */}
 				<div className="flex justify-center items-center h-[500px]">
@@ -171,6 +183,12 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 						className="w-full h-full object-cover rounded-lg"
 					/>
 				</div>
+
+				<Modal
+					loading={loading}
+					isVisible={isModalVisible}
+					onClose={() => setModalVisible(false)} // Close the modal and navigate to summary
+				/>
 
 				{/* User Video Feed */}
 				<div className="absolute top-4 right-4 w-48 h-48 border border-gray-300 rounded-lg overflow-hidden">

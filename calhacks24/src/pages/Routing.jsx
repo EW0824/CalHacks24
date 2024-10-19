@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import { useState, useEffect } from "react";
 import HomePage from "./Homepage.jsx";
 import Interview from "./Interview.jsx";
+import Report from "./Report.jsx";
 
 function App() {
 	const [isDarkTheme, setIsDarkTheme] = useState(() => {
@@ -34,6 +35,12 @@ function App() {
 							isDarkTheme={isDarkTheme}
 							setIsDarkTheme={setIsDarkTheme}
 						/>
+					}
+				/>
+				<Route
+					path="/summary"
+					element={
+						<Report isDarkTheme={isDarkTheme} setIsDarkTheme={setIsDarkTheme} />
 					}
 				/>
 			</Routes>
