@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { SunIcon, MoonIcon } from "@heroicons/react/outline";
 
 function Homepage({ isDarkTheme, setIsDarkTheme }) {

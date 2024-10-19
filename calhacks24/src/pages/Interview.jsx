@@ -39,7 +39,7 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 		if (webcamVideo?.srcObject) {
 			const stream = webcamVideo.srcObject;
 			mediaRecorderRef.current = new MediaRecorder(stream, {
-				mimeType: "video/webm",
+				mimeType: "video/mp4",
 			});
 
 			mediaRecorderRef.current.ondataavailable = handleDataAvailable;
@@ -72,8 +72,15 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 
 	const uploadVideo = async (videoBlob) => {
 		try {
-			await axios.put("/api/putExpressions", videoBlob);
-			await axios.put("/api/putVoice", videoBlob);
+			const formData = new FormData();
+			formData.append("file", videoBlob, "recording.mp4");
+
+			await axios.put("/api/putExpressions", formData, {
+				headers: { "Content-Type": "multipart/form-data" },
+			});
+			await axios.put("/api/putVoice", formData, {
+				headers: { "Content-Type": "multipart/form-data" },
+			});
 		} catch (error) {
 			console.error(error);
 		}
@@ -122,36 +129,35 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 
 	return (
 		<div
-			className={`transition-colors duration-500 min-h-screen flex flex-col items-center ${isDarkTheme ? "bg-gray-900" : "bg-gray-100"} p-4`}
+			className={`transition-colors duration-500 min-h-screen flex flex-col items-center ${isDarkTheme ? "bg-gray-900" : "bg-gray-100"}`}
 		>
 			{/* Back Button */}
 			<a href="/" className="absolute top-4 left-4 cursor-pointer">
 				<button
 					type="button"
-					className={`${isDarkTheme ? "bg-white text-black" : "bg-black text-white"} py-2 px-4 rounded text-lg font-semibold hover:bg-gray-300 duration-200 hover:scale-125 active:scale-100`}
+					className="bg-white text-black py-2 px-4 rounded text-lg font-semibold hover:bg-gray-300 duration-200 hover:scale-125 active:scale-100"
 					title="Go Back"
 				>
 					&#8592;
 				</button>
 			</a>
-
-			{/* Theme Toggle Icon */}
-			<div
-				className="absolute top-4 right-4 cursor-pointer"
-				onClick={toggleTheme}
+			<header
+				className={`${isDarkTheme ? "bg-gray-800" : "bg-blue-600"} w-full py-6 text-center`}
 			>
-				{isDarkTheme ? (
-					<SunIcon className="h-6 w-6 text-yellow-300" />
-				) : (
-					<MoonIcon className="h-6 w-6 text-gray-600" />
-				)}
-			</div>
-
-			<h1
-				className={`${isDarkTheme ? "text-white" : "text-black"} text-3xl font-bold mb-4`}
-			>
-				Interview Simulation
-			</h1>
+				<h1 className="text-white text-3xl font-bold mb-4">
+					Interview Simulation
+				</h1>
+				<div
+					className="absolute top-4 right-4 cursor-pointer"
+					onClick={toggleTheme}
+				>
+					{isDarkTheme ? (
+						<MoonIcon className="h-6 w-6 text-yellow-300" />
+					) : (
+						<SunIcon className="h-6 w-6 text-yellow-500" />
+					)}
+				</div>
+			</header>
 
 			<div
 				className={`relative w-full max-w-4xl ${isDarkTheme ? "bg-gray-800" : "bg-white"} shadow-md rounded-lg p-4 mb-4`}
