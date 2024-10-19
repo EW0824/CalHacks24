@@ -18,6 +18,7 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 		try {
 			mediaStream.current = await navigator.mediaDevices.getUserMedia({
 				video: true, // Request video stream
+				audio: true,
 			});
 			if (videoRef.current) {
 				videoRef.current.srcObject = mediaStream.current; // Set the video stream to the video element
@@ -79,17 +80,23 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 			const formData = new FormData();
 			formData.append("file", videoBlob, "recording.mp4");
 
-			const expressionResponse = await axios.post(
-				"/api/putExpressions",
+			// const expressionResponse = await axios.post(
+			// 	"http://localhost:8080/api/postExpressions",
+			// 	formData,
+			// 	{
+			// 		headers: { "Content-Type": "multipart/form-data" },
+			// 	},
+			// );
+
+			const voiceResponse = await axios.post(
+				"http://localhost:8080/api/postVoice",
 				formData,
 				{
 					headers: { "Content-Type": "multipart/form-data" },
 				},
 			);
 
-			const voiceResponse = await axios.put("/api/putVoice", formData, {
-				headers: { "Content-Type": "multipart/form-data" },
-			});
+			console.log(voiceResponse);
 
 			setLoading(false);
 		} catch (error) {
@@ -197,7 +204,7 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 						className="w-full h-full object-cover"
 						autoPlay
 						playsInline
-						muted // Mute the video feed to avoid feedback
+						muted
 					>
 						Your browser does not support the video tag.
 					</video>
