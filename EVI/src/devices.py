@@ -79,3 +79,22 @@ class AudioDevices:
                     )
             except ValueError:
                 print("Please enter a numerical index.")
+
+    @classmethod
+    def get_default_input_output_devices(cls, pyaudio: PyAudio) -> Tuple[int, int]:
+        """
+        Get the default audio input and output device.
+        """
+        try:
+            input_device_info = pyaudio.get_default_input_device_info()
+            output_device_info = pyaudio.get_default_output_device_info()
+            input_device_index = input_device_info["index"]
+            output_device_index = output_device_info["index"]
+            sample_rate = int(input_device_info["defaultSampleRate"])
+
+            print(f"Using default input device: {input_device_index}: {input_device_info['name']}")
+            print(f"Using default output device: {output_device_index}: {output_device_info['name']}")
+            return input_device_index, output_device_index, sample_rate
+        except IOError:
+            print(f"No default input/output device found.")
+            return None, None, None
