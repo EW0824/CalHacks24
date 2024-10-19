@@ -47,12 +47,12 @@ async def main():
     )
 
     # Fetch the access token for authentication
-    access_token = get_access_token()
+    access_token, config_id = get_access_token_and_config_id()
 
     # Construct the websocket URL with the access token
     socket_url = (
         "wss://api.hume.ai/v0/assistant/chat?"
-        f"access_token={access_token}"
+        f"access_token={access_token}&config_id={config_id}"
     )
 
     # Connect to the websocket and start the audio stream
@@ -71,7 +71,7 @@ async def main():
     pyaudio.terminate()
 
 
-def get_access_token() -> str:
+def get_access_token_and_config_id() -> str:
     """
     Load API credentials from environment variables and fetch an access token.
 
@@ -86,6 +86,7 @@ def get_access_token() -> str:
     # Attempt to retrieve API key and Secret key from environment variables
     HUME_API_KEY = os.getenv("HUME_API_KEY")
     HUME_SECRET_KEY = os.getenv("HUME_SECRET_KEY")
+    HUME_CONFIG_ID = os.getenv("HUME_CONFIG_ID", None)
 
     # Ensure API key and Secret key are set
     if HUME_API_KEY is None or HUME_SECRET_KEY is None:
@@ -94,12 +95,19 @@ def get_access_token() -> str:
         )
         exit()
 
+    # Ensure the config ID is set
+    if HUME_CONFIG_ID is None:
+        print(
+            "Error: HUME_CONFIG_ID must be set either in a .env file or as an environment variable."
+        )
+        exit()
+
     # Create an instance of Authenticator with the API key and Secret key
     authenticator = Authenticator(HUME_API_KEY, HUME_SECRET_KEY)
 
     # Fetch the access token
     access_token = authenticator.fetch_access_token()
-    return access_token
+    return access_token, HUME_CONFIG_ID
 
 
 if __name__ == "__main__":
