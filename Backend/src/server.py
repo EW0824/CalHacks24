@@ -1,20 +1,34 @@
 import io
 import os
 import tempfile
-from flask import Flask, request, jsonify, Response
 import asyncio
-from hume import AsyncHumeClient
-from hume.expression_measurement.batch import Face, Models
-from hume.expression_measurement.batch.types import InferenceBaseRequest
+import wave
+from flask import Flask, request, jsonify, Response
 from datetime import datetime
 from cartesia import Cartesia
 from dotenv import load_dotenv
-import wave
+from flask import Flask, request, jsonify
+from hume import AsyncHumeClient
+from hume.expression_measurement.batch import Face, Models
+from hume.expression_measurement.batch.types import InferenceBaseRequest
+
 from transcription import extract_video_audio
+from utils import transcribe_video
+
+from EVI.authenticator import Authenticator
+from EVI.connection import Connection
+from EVI.devices import AudioDevices
+from EVI.evi import start_conversation
+# from EVI.transcriber import Transcriber
 
 API_KEY = os.getenv("API_KEY")
 
 load_dotenv()
+
+
+########
+# SETUP
+########
 
 app = Flask(__name__)
 
@@ -172,6 +186,38 @@ def add_cors_headers(response):
 def after_request(response):
     return add_cors_headers(response)
 
+
+
+########
+# EVI API
+########
+
+@app.route("/api/startConversation", methods=["POST", "OPTIONS"])
+def start_conversation_route():
+    """
+    Start a conversation with Hume AI's EVI via WebSocket and manage audio input/output
+    """
+    if request.method == "OPTIONS":
+        return jsonify({}), 200  # Respond to preflight request
+
+    # Extract user message from request body
+    data = request.get_json()
+    user_message = data.get("message", "")
+
+    try:
+        # Start the conversation
+        response = start_conversation(user_message)
+        return jsonify(response), 200
+    
+    except Exception as e:
+        print(f"Error starting conversation: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+
+########
+# POST PROCESSING
+########
 
 @app.route("/api/postVoice", methods=["POST", "OPTIONS"])
 async def upload_video() -> tuple:
