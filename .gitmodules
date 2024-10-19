@@ -1,0 +1,3 @@
+[submodule "EVI/hume-api-examples"]
+	path = EVI/hume-api-examples
+	url = https://github.com/HumeAI/hume-api-examples.git
