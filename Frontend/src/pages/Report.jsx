@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Bar } from "react-chartjs-2";
 import {
 	Chart as ChartJS,
@@ -22,13 +22,35 @@ ChartJS.register(
 );
 
 const Report = ({ isDarkTheme, setIsDarkTheme }) => {
+	const [behaviors, setBehaviors] = useState({});
+	const [behaviorFeedback, setBehaviorFeedback] = useState("");
+	const [qaFeedback, setQaFeedback] = useState("");
+	const [score, setScore] = useState(0);
+	const [video, setVideo] = useState(null);
+	const [questions, setQuestions] = useState("");
+	const [response, setResponse] = useState("");
+
+	useEffect(() => {
+		try {
+			setBehaviors(JSON.parse(localStorage.getItem("behavior")));
+			setBehaviorFeedback(localStorage.getItem("behaviorFeedback"));
+			setQaFeedback(localStorage.getItem("qaFeedback"));
+			setScore(localStorage.getItem("score"));
+			setVideo(localStorage.getItem("video"));
+			setQuestions(localStorage.getItem("questions"));
+			setResponse(localStorage.getItem("responses"));
+		} catch (error) {
+			console.error(error);
+		}
+	}, []);
+
 	// Sample data for emotions and scores
 	const emotionData = {
-		labels: ["Happy", "Neutral", "Sad", "Surprised", "Angry"],
+		labels: Object.keys(behaviors),
 		datasets: [
 			{
-				label: "Emotion Frequency",
-				data: [30, 50, 10, 5, 5], // Example frequency data
+				label: "Behavior Frequency",
+				data: Object.values(behaviors),
 				backgroundColor: "rgba(75, 192, 192, 0.6)",
 			},
 		],
@@ -37,12 +59,6 @@ const Report = ({ isDarkTheme, setIsDarkTheme }) => {
 	const toggleTheme = () => {
 		setIsDarkTheme(!isDarkTheme); // Toggle the theme
 	};
-
-	const behavioralFeedback =
-		"You maintained good eye contact but appeared anxious at times. Practice will help reduce fidgeting.";
-	const questionFeedback =
-		"Your answers were mostly clear, but try to elaborate more on your experiences.";
-	const score = 78; // Example score
 
 	return (
 		<div
@@ -75,52 +91,93 @@ const Report = ({ isDarkTheme, setIsDarkTheme }) => {
 			</header>
 
 			<div className="flex flex-col md:flex-row p-6">
-				{/* Emotion Frequency Bar Graph */}
-				<div
-					className={`${isDarkTheme ? "bg-gray-800 text-white" : "bg-white"} flex-1 mb-8 shadow-md rounded-lg p-4 mr-4`}
-				>
-					<h2 className="text-2xl font-semibold mb-4">Emotion Frequency</h2>
-					<Bar
-						data={emotionData}
-						options={{
-							responsive: true,
-							scales: {
-								y: {
-									beginAtZero: true,
-									ticks: {
-										autoSkip: true,
-										maxTicksLimit: 5,
+				{/* Left Side: Emotion Frequency and Questions/Response */}
+				<div className="flex-1 mb-8 md:mr-4">
+					{/* Emotion Frequency Bar Graph */}
+					<div
+						className={`${isDarkTheme ? "bg-gray-800 text-white" : "bg-white"} shadow-md rounded-lg p-4 mb-4`}
+					>
+						<h2 className="text-2xl font-semibold mb-4">Emotion Frequency</h2>
+						<Bar
+							data={emotionData}
+							options={{
+								responsive: true,
+								scales: {
+									y: {
+										beginAtZero: true,
+										ticks: {
+											autoSkip: true,
+											maxTicksLimit: 5,
+										},
 									},
 								},
-							},
-						}}
-						height={200} // Set the height of the chart
-					/>
+							}}
+							height={200} // Set the height of the chart
+						/>
+					</div>
+
+					{/* Questions Component */}
+					<div
+						className={`${isDarkTheme ? "text-white bg-gray-800" : "text-black bg-white"}  shadow-md rounded-lg p-4 mb-4`}
+					>
+						<h2 className="text-2xl font-semibold mb-4">Questions</h2>
+						<p>{questions}</p>
+					</div>
+
+					{/* Response Component */}
+					<div
+						className={`${isDarkTheme ? "text-white bg-gray-800" : "text-black bg-white"}  shadow-md rounded-lg p-4`}
+					>
+						<h2 className="text-2xl font-semibold mb-4">Response</h2>
+						<p>{response}</p>
+					</div>
 				</div>
 
-				{/* Feedback and Scores */}
+				{/* Right Side: Video and Feedbacks */}
 				<div className="flex-1 mb-8">
+					{/* Video Component */}
+					<div className="flex flex-col items-center mb-4">
+						<h2
+							className={`${isDarkTheme ? "text-white" : "text-black"} text-2xl font-semibold mb-4`}
+						>
+							Interview Video
+						</h2>
+						{video ? (
+							<video
+								controls
+								className="rounded-lg shadow-md"
+								width="640"
+								height="360"
+							>
+								<source src={video} type="video/mp4" />
+								Your browser does not support the video tag.
+							</video>
+						) : (
+							<p>No video available.</p>
+						)}
+					</div>
+
 					{/* Behavioral Feedback */}
 					<div
 						className={`${isDarkTheme ? "bg-gray-800 text-white" : "bg-white"} shadow-md rounded-lg p-4 mb-4`}
 					>
 						<h2 className="text-2xl font-semibold mb-4">Behavioral Feedback</h2>
-						<p>{behavioralFeedback}</p>
+						<p>{behaviorFeedback}</p>
 					</div>
 
 					{/* Question Answering Feedback */}
 					<div
-						className={`${isDarkTheme ? "bg-gray-800 text-white" : "bg-white"} shadow-md rounded-lg p-4 mb-4`}
+						className={`${isDarkTheme ? "bg-gray-800 text-white" : "bg-white"} shadow-md rounded-lg p-4`}
 					>
 						<h2 className="text-2xl font-semibold mb-4">
 							Question Answering Feedback
 						</h2>
-						<p>{questionFeedback}</p>
+						<p>{qaFeedback}</p>
 					</div>
 
 					{/* Score Display */}
 					<div
-						className={`${isDarkTheme ? "bg-gray-800 text-white" : "bg-white"} shadow-md rounded-lg p-4 mb-4`}
+						className={`${isDarkTheme ? "bg-gray-800 text-white" : "bg-white"} shadow-md rounded-lg p-4 mt-4`}
 					>
 						<h2 className="text-2xl font-semibold mb-4">Score</h2>
 						<p className="text-3xl">{score}/100</p>

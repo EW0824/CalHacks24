@@ -80,13 +80,13 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 			const formData = new FormData();
 			formData.append("file", videoBlob, "recording.mp4");
 
-			// const expressionResponse = await axios.post(
-			// 	"http://localhost:8080/api/postExpressions",
-			// 	formData,
-			// 	{
-			// 		headers: { "Content-Type": "multipart/form-data" },
-			// 	},
-			// );
+			const expressionResponse = await axios.post(
+				"http://localhost:8080/api/postExpressions",
+				formData,
+				{
+					headers: { "Content-Type": "multipart/form-data" },
+				},
+			);
 
 			const voiceResponse = await axios.post(
 				"http://localhost:8080/api/postVoice",
@@ -96,9 +96,35 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 				},
 			);
 
-			console.log(voiceResponse);
-
 			setLoading(false);
+
+			const transcript = voiceResponse.data.transcription || "no response";
+			const questions = ["wofijwefo0ijh", "wofiwhoih"]; // has to be fetched from somewhere
+			const behaviors = expressionResponse.data.behaviors;
+
+			const feedbackResponse = await axios.post(
+				"http://localhost:8080/api/postFeedback",
+				JSON.stringify({
+					transcript: transcript,
+					questions: questions,
+					behaviors: behaviors,
+				}),
+				{
+					headers: { "Content-Type": "application/json" },
+				},
+			);
+
+			const behaviorFeedback = feedbackResponse.data.behaviorFeedback;
+			const qaFeedback = feedbackResponse.data.qaFeedback;
+			const score = feedbackResponse.data.score;
+
+			localStorage.setItem("behavior", JSON.stringify(behaviors));
+			localStorage.setItem("behaviorFeedback", behaviorFeedback);
+			localStorage.setItem("qaFeedback", qaFeedback);
+			localStorage.setItem("score", score);
+			localStorage.setItem("video", URL.createObjectURL(videoBlob));
+			localStorage.setItem("questions", questions);
+			localStorage.setItem("responses", transcript);
 		} catch (error) {
 			setModalVisible(false);
 			console.error(error);
