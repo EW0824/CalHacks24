@@ -17,7 +17,8 @@ function Homepage({ isDarkTheme, setIsDarkTheme }) {
 				<p className="mt-2 text-lg text-white">
 					An AI-powered tool to enhance your interview skills.
 				</p>
-				<div
+				<button
+					type="button"
 					className="absolute top-4 right-4 cursor-pointer"
 					onClick={toggleTheme}
 				>
@@ -26,7 +27,7 @@ function Homepage({ isDarkTheme, setIsDarkTheme }) {
 					) : (
 						<SunIcon className="h-6 w-6 text-yellow-500" />
 					)}
-				</div>
+				</button>
 				<div className="mt-4">
 					<a
 						href="/interview"

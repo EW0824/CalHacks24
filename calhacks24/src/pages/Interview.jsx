@@ -147,7 +147,8 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 				<h1 className="text-white text-3xl font-bold mb-4">
 					Interview Simulation
 				</h1>
-				<div
+				<button
+					type="button"
 					className="absolute top-4 right-4 cursor-pointer"
 					onClick={toggleTheme}
 				>
@@ -156,7 +157,7 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 					) : (
 						<SunIcon className="h-6 w-6 text-yellow-500" />
 					)}
-				</div>
+				</button>
 			</header>
 
 			<div
