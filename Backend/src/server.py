@@ -536,7 +536,7 @@ def get_feedback() -> tuple:
 
         print(answers)
 
-        return jsonify({"feedback": answers, "score": final_interview_score}), 200
+        return jsonify({"feedback": answers, "score": final}), 200
     except Exception as e:
         print(f"Error getting feedback: {e}")
         return jsonify({"error": str(e)}), 500

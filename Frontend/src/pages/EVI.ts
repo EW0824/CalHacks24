@@ -33,22 +33,23 @@ export async function connectToHume(
   setSocket: (socket: Hume.empathicVoice.chat.ChatSocket) => void,
   handleMessage: (role: string, content: string, topEmotions: { emotion: string; score: any }[]) => void  // <-- Add message handler
 ) {
+  let key: string;
+  if (t === "student") {
+    key = import.meta.env.VITE_HUME_STUDENT
+  } else if(t === "nice") {
+    key = import.meta.env.VITE_HUME_FOUNDER
+  } else {
+    key = import.meta.env.VITE_HUME_FOUNDER_MEAN
+  }
   if (!client) {
-    let key: string;
-    if (t === "student") {
-      key = import.meta.env.VITE_HUME_STUDENT
-    } else {
-      key = import.meta.env.VITE_HUME_FOUNDER
-    }
-    console.log(key)
     client = new HumeClient({
       apiKey: import.meta.env.VITE_HUME_API_KEY || '',
-      secretKey: key || "",
+      secretKey: import.meta.env.VITE_HUME_SECRET_KEY || '',
     });
   }
 
-  socket = await client.empathicVoice.chat.connect({
-    configId: import.meta.env.VITE_HUME_CONFIG_ID || '',
+  socket = client.empathicVoice.chat.connect({
+    configId: key || '',
   });
 
   // WebSocket events

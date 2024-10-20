@@ -196,7 +196,7 @@ const Report = ({ isDarkTheme, setIsDarkTheme }) => {
 						className={`${isDarkTheme ? "bg-gray-800 text-white" : "bg-white"} shadow-md rounded-lg p-4 mb-4`}
 					>
 						<h2 className="text-2xl font-semibold mb-4">Score</h2>
-						<div>{score}/100</div>
+						<div>{Math.round(score)}/100</div>
 					</div>
 				</div>
 			</div>

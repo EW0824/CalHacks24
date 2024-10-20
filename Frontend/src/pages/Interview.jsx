@@ -273,8 +273,14 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 		setStartTime(startTime); // Begin time keepin
 		localStorage.setItem("startTime", startTime);
 		console.log("Start time is ", startTime); // for debug
+
+		let other = "nice";
+		if (selectedPerson === "elon") {
+			other = "mean";
+		}
+
 		await connectToHume(
-			selectedPerson === "student" ? "student" : "founder",
+			selectedPerson === "student" ? "student" : other,
 			setSocket,
 			handleMessage,
 		);
