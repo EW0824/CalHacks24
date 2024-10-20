@@ -17,6 +17,10 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 	const [loading, setLoading] = useState(true);
 	const [questions, setQuestions] = useState([]);
 
+	// Hume
+	const [conversationHistory, setConversationHistory] = useState([]);  // Holds conversation history
+	const [socket, setSocket] = useState(null); // Web socket
+
 	const askQuestion = async (question) => {
 		try {
 			setQuestions((prev) => [...prev, question]);
@@ -43,11 +47,17 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 		}
 	};
 
-	const [conversationHistory, setConversationHistory] = useState([]);  // Holds conversation history
-	const [socket, setSocket] = useState(null); // Web socket
 
+
+	/*
+		Handle message received from Hume
+	*/
 	const handleMessage = (role, content) => {
 		console.log("Received message from Hume:", {role, content});
+		// // askQuestion(content)
+		if (role === 'assistant') {
+			askQuestion(content)
+		}
 		// Push new message to the conversation history state
 		setConversationHistory(prevHistory => [
 		  ...prevHistory,
