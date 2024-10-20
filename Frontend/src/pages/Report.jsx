@@ -38,7 +38,13 @@ const Report = ({ isDarkTheme, setIsDarkTheme }) => {
 			setScore(localStorage.getItem("score"));
 			setVideo(localStorage.getItem("video"));
 			setQuestions(localStorage.getItem("questions"));
-			setResponse(localStorage.getItem("responses"));
+
+			const res = JSON.parse(localStorage.getItem("responses"));
+			let responses = "";
+			for (const r of res) {
+				for (const x of Object.values(r)) responses += `${x}\n\n`;
+			}
+			setResponse(responses);
 		} catch (error) {
 			console.error(error);
 		}

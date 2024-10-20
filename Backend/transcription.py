@@ -2,7 +2,6 @@
 from moviepy.editor import VideoFileClip
 import whisper
 import ssl
-import os
 
 # Set up unverified SSL context if needed
 ssl._create_default_https_context = ssl._create_unverified_context
@@ -36,7 +35,6 @@ def extract_video_audio(video_file_path, clip_duration=5):
 
         clip.audio.write_audiofile(audio_file_path)
         clip.write_videofile(vid_file_path)
-        # clip.write_videofile(vid_file_path, codec="libx264", audio_codec="aac")
 
         transcription = transcribe_video(vid_file_path, clip_end_time)
         all_transcriptions.append(transcription)
