@@ -20,25 +20,25 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 	const [conversationHistory, setConversationHistory] = useState([]); // Holds conversation history
 	const [socket, setSocket] = useState(null); // Web socket
 
-	// const tts = useTTS({
-	// 	apiKey: import.meta.env.VITE_CARTESIA_API_KEY,
-	// 	sampleRate: 44100,
-	// });
+	const tts = useTTS({
+		apiKey: import.meta.env.VITE_CARTESIA_API_KEY,
+		sampleRate: 44100,
+	});
 
-	// const askQuestion = async (question) => {
-	// 	setQuestions((prev) => [...prev, question]);
+	const askQuestion = async (question) => {
+		setQuestions((prev) => [...prev, question]);
 
-	// 	const response = await tts.buffer({
-	// 		model_id: "sonic-english",
-	// 		voice: {
-	// 			mode: "id",
-	// 			id: "a0e99841-438c-4a64-b679-ae501e7d6091",
-	// 		},
-	// 		transcript: question,
-	// 	});
+		const response = await tts.buffer({
+			model_id: "sonic-english",
+			voice: {
+				mode: "id",
+				id: "a0e99841-438c-4a64-b679-ae501e7d6091",
+			},
+			transcript: question,
+		});
 
-	// 	await tts.play();
-	// };
+		await tts.play();
+	};
 
 	/*
 		Handle message received from Hume
@@ -47,7 +47,7 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 		console.log("Received message from Hume:", { role, content });
 		// // askQuestion(content)
 		if (role === "assistant") {
-			// await askQuestion(content);
+			await askQuestion(content);
 		}
 		// Push new message to the conversation history state
 		setConversationHistory((prevHistory) => [
