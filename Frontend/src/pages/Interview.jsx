@@ -1,8 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import interviewerImage from "/interviewer.jpg"; // Ensure this path is correct
+import elon from "/elon.png";
 import { SunIcon, MoonIcon } from "@heroicons/react/outline"; // Install heroicons if you haven't
 import Modal from "../components/Modal.jsx";
+import { connectToHume, captureAudio, stopRecording, disconnectFromHume } from './EVI.ts';
 
 // could be interviewer based for practice
 // could be for companies to evaluate people
@@ -39,6 +41,18 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 		} catch (error) {
 			console.error("Error playing audio:", error);
 		}
+	};
+
+	const [conversationHistory, setConversationHistory] = useState([]);  // Holds conversation history
+	const [socket, setSocket] = useState(null); // Web socket
+
+	const handleMessage = (role, content) => {
+		console.log("Received message from Hume:", {role, content});
+		// Push new message to the conversation history state
+		setConversationHistory(prevHistory => [
+		  ...prevHistory,
+		  { role, content }
+		]);
 	};
 
 	const startVideo = async () => {
@@ -179,14 +193,16 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 		}
 	};
 
-	const startInterview = () => {
+	const startInterview = async () => {
 		startVideo();
+		await connectToHume(setSocket, handleMessage);
 		setIsInterviewing(true); // Update state to indicate interview is in progress
 	};
 
 	const stopInterview = () => {
 		stopRecording(); // Stop recording when interview stops
 		stopVideo();
+		disconnectFromHume();
 		setIsInterviewing(false); // Update state to indicate interview has ended
 	};
 
@@ -219,6 +235,12 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 			stopVideo(); // Cleanup on unmount
 		};
 	}, []);
+
+	useEffect(() => {
+		if (socket) {
+			captureAudio(socket);
+		}
+	}, [socket]);
 
 	return (
 		<div
@@ -259,7 +281,7 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 				{/* Interviewer Box */}
 				<div className="flex justify-center items-center h-[500px]">
 					<img
-						src={interviewerImage}
+						src={elon}
 						alt="Interviewer"
 						className="w-full h-full object-cover rounded-lg"
 					/>
@@ -283,6 +305,16 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 						Your browser does not support the video tag.
 					</video>
 				</div>
+
+				<div>
+					{/* Display conversation history */}
+					{conversationHistory.map((message, index) => (
+					<p key={index}>
+						<strong>{message.role}:</strong> {message.content}
+					</p>
+					))}
+				</div>
+
 			</div>
 
 			<div className="text-center">
