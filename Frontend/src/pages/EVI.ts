@@ -12,10 +12,25 @@ let socket: Hume.empathicVoice.chat.ChatSocket | null = null;
 let recorder: MediaRecorder | null = null;
 let audioStream: MediaStream | null = null;
 
+/*
+Extract top emotions
+*/
+function extractTopEmotions(emotionScores: {[emotion: string]: number}, n:number) {
+  const sortedEmotions = Object.entries(emotionScores).sort(([, scoreA], [, scoreB]) => scoreB - scoreA)
+  .slice(0, n)
+  .map(([emotion, score]) => ({
+    emotion,
+    score: score.toFixed(2),
+  }));
+
+  return sortedEmotions;
+}
+
+
 // Connect to Hume WebSocket and pass the message handling callback
 export async function connectToHume(
   setSocket: (socket: Hume.empathicVoice.chat.ChatSocket) => void,
-  handleMessage: (role: string, content: string) => void  // <-- Add message handler
+  handleMessage: (role: string, content: string, topEmotions: { emotion: string; score: any }[]) => void  // <-- Add message handler
 ) {
   if (!client) {
     client = new HumeClient({
@@ -33,7 +48,12 @@ export async function connectToHume(
   socket.on('message', (message) => {
     if (message.type === 'user_message' || message.type === 'assistant_message') {
       const { role, content } = message.message;
-      handleMessage(role, content);  // <-- Call the callback with the message
+      const emotionScores = message.models?.prosody?.scores || {};
+
+      // Extract top 3 emotions from the scores
+      const numOfEmotions = 48
+      const topEmotions = extractTopEmotions(emotionScores, numOfEmotions);
+      handleMessage(role, content, topEmotions);  // <-- Call the callback with the message
     }
   });
   socket.on('error', (error) => console.error('WebSocket error:', error));
@@ -68,3 +88,5 @@ export function stopRecording() {
 export function disconnectFromHume() {
   socket?.close();
 }
+
+

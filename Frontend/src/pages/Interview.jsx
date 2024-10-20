@@ -48,9 +48,9 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 	/*
 		Handle message received from Hume
 	*/
-	const handleMessage = async (role, content) => {
-		console.log("Received message from Hume:", { role, content });
-		// // askQuestion(content)
+	const handleMessage = async (role, content, emotions) => {
+		console.log("Received message from Hume:", { role, content , emotions});
+		// askQuestion(content)
 		if (role === "assistant") {
 			await askQuestion(content);
 		}
@@ -60,11 +60,15 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 			newRole = "Interviewer";
 		}
 		// Push new message to the conversation history state
-		setConversationHistory((prevHistory) => [
-			...prevHistory,
-			{ role: newRole, content: content },
-		]);
+		setConversationHistory(prevHistory => [
+		  ...prevHistory,
+		  { role, content }
+		]); 
 	};
+
+	/*
+	Start & Stop Video
+	*/
 
 	const startVideo = async () => {
 		localStorage.setItem("behavior", null);
@@ -96,6 +100,11 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 			videoRef.current.srcObject = null; // Clear video stream
 		}
 	};
+
+
+	/*
+	Start & Stop Recording
+	*/
 
 	const startRecording = () => {
 		const webcamVideo = videoRef.current;
@@ -205,6 +214,10 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 		}
 	};
 
+
+	/*
+	Start & Stop Interview
+	*/
 	const startInterview = async () => {
 		startVideo();
 		await connectToHume(setSocket, handleMessage);
@@ -216,6 +229,24 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 		stopVideo();
 		disconnectFromHume();
 		setIsInterviewing(false); // Update state to indicate interview has ended
+
+		// Send list of emotions to the backend
+		sendEmotionsToBackend(conversationHistory);
+	};
+
+	const sendEmotionsToBackend = async (emotions) => {
+		try {
+			await fetch("http://localhost:8080/api/postFeedback", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify(conversationHistory),
+			})
+			console.log("Emotions data sent to backend");
+		} catch (error) {
+			console.error("Failed to send emotions data to backend: ", error);
+		}
 	};
 
 	const toggleTheme = () => {
