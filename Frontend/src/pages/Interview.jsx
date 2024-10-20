@@ -17,13 +17,17 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 	const [loading, setLoading] = useState(true);
 	const [questions, setQuestions] = useState([]);
 
+	// HUME
 	const [conversationHistory, setConversationHistory] = useState([]); // Holds conversation history
 	const [socket, setSocket] = useState(null); // Web socket
+	const [startTime, setStartTime] = useState(null);
+	const [userEmotionData, setUserEmotionData] = useState([]);
 
 	const tts = useTTS({
 		apiKey: import.meta.env.VITE_CARTESIA_API_KEY,
 		sampleRate: 44100,
 	});
+
 
 	const askQuestion = async (question) => {
 		// setQuestions((prev) => [...prev, question]);
@@ -49,22 +53,43 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 		Handle message received from Hume
 	*/
 	const handleMessage = async (role, content, emotions) => {
-		console.log("Received message from Hume:", { role, content , emotions});
-		// askQuestion(content)
+
+		// Get the timestamp from startTime
+		const startTime = localStorage.getItem("startTime");
+
+		const currentTime = Date.now();
+		const timestamp = startTime ? ((currentTime - startTime) / 1000).toFixed(2) : "0.00";
+
+		console.log("Received message from Hume:", { role, content , emotions, timestamp});
+
 		if (role === "assistant") {
-			await askQuestion(content);
+			// await askQuestion(content);
 		}
 
-		let newRole = "User";
-		if (role === "assistant") {
-			newRole = "Interviewer";
-		}
+		// Turn user vs assistant -> User vs Interviewer
+		const newRole = (role === "assistant" ? "Interviewer" : "User");
 		// Push new message to the conversation history state
 		setConversationHistory(prevHistory => [
-		  ...prevHistory,
-		  { role, content }
-		]); 
+			...prevHistory,
+			{ newRole, content, emotions, timestamp},
+		]);
+		
+		if (role === "user") {
+			setUserEmotionData((prevData) => [
+				...prevData,
+				{ timestamp, emotions },
+			])
+		}
+
 	};
+
+	// Put userEmotionData in local storage
+	useEffect(() => {
+		if (userEmotionData.length > 0) {
+		  localStorage.setItem("emotions", JSON.stringify(userEmotionData));
+		  console.log("Emotions data updated in local storage", userEmotionData);
+		}
+	  }, [userEmotionData]);
 
 	/*
 	Start & Stop Video
@@ -220,6 +245,10 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 	*/
 	const startInterview = async () => {
 		startVideo();
+		const startTime = Date.now();
+		setStartTime(startTime); 		// Begin time keepin
+		localStorage.setItem("startTime", startTime);
+		console.log("Start time is ", startTime); // for debug
 		await connectToHume(setSocket, handleMessage);
 		setIsInterviewing(true); // Update state to indicate interview is in progress
 	};
@@ -231,7 +260,7 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 		setIsInterviewing(false); // Update state to indicate interview has ended
 
 		// Send list of emotions to the backend
-		sendEmotionsToBackend(conversationHistory);
+		sendEmotionsToBackend(localStorage.getItem("emotions"));
 	};
 
 	const sendEmotionsToBackend = async (emotions) => {
@@ -241,9 +270,9 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 				headers: {
 					"Content-Type": "application/json",
 				},
-				body: JSON.stringify(conversationHistory),
+				body: JSON.stringify(emotions),
 			})
-			console.log("Emotions data sent to backend");
+			console.log("Emotions data sent to backend", emotions);
 		} catch (error) {
 			console.error("Failed to send emotions data to backend: ", error);
 		}
@@ -353,7 +382,7 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 					{/* Display conversation history */}
 					{conversationHistory.map((message, index) => (
 						<p key={index}>
-							<strong>{message.role}:</strong> {message.content}
+							<strong>{message.newRole}:</strong> {message.content}
 						</p>
 					))}
 				</div>
