@@ -49,7 +49,7 @@ function Homepage({ isDarkTheme, setIsDarkTheme }) {
 					<h2
 						className={`text-3xl font-semibold ${isDarkTheme ? "text-gray-100" : "text-gray-800"} mb-4`}
 					>
-						Welcome to Interview Simulator!
+						Welcome to SharkProof!
 					</h2>
 					<p
 						className={`mb-4 ${isDarkTheme ? "text-gray-300" : "text-gray-600"}`}
@@ -113,16 +113,20 @@ function Homepage({ isDarkTheme, setIsDarkTheme }) {
 						<div
 							className={`${isDarkTheme ? "bg-gray-700" : "bg-blue-600"} p-4 rounded-lg shadow-md transition duration-200 hover:shadow-lg`}
 						>
-							<h4 className="font-bold">Progress Tracking</h4>
-							<p>Monitor your improvements over time and refine your skills.</p>
+							<h4 className="font-bold">Relevant Questions</h4>
+							<p>
+								Questions are based off of previous answers, providing an
+								experience as close to the real deal as possible.
+							</p>
 						</div>
 						<div
 							className={`${isDarkTheme ? "bg-gray-700" : "bg-blue-600"} p-4 rounded-lg shadow-md transition duration-200 hover:shadow-lg`}
 						>
-							<h4 className="font-bold">Expert Tips</h4>
+							<h4 className="font-bold">Real Scenarios</h4>
 							<p>
-								Receive insights from industry professionals on acing
-								interviews.
+								Practice interviewing with famous investors such as Lebron
+								James, Oprah Winfrey, Elon Musk and just a basic default
+								interview!
 							</p>
 						</div>
 					</div>

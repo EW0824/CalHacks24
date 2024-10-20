@@ -273,7 +273,11 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 		setStartTime(startTime); // Begin time keepin
 		localStorage.setItem("startTime", startTime);
 		console.log("Start time is ", startTime); // for debug
-		await connectToHume(setSocket, handleMessage);
+		await connectToHume(
+			selectedPerson === "student" ? "student" : "founder",
+			setSocket,
+			handleMessage,
+		);
 		setIsInterviewing(true); // Update state to indicate interview is in progress
 	};
 
@@ -356,9 +360,7 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 			<header
 				className={`${isDarkTheme ? "bg-gray-800" : "bg-blue-600"} w-full py-6 text-center`}
 			>
-				<h1 className="text-white text-3xl font-bold mb-4">
-					Interview Simulation
-				</h1>
+				<h1 className="text-white text-3xl font-bold mb-4">Interview</h1>
 				<button
 					type="button"
 					className="absolute top-4 right-4 cursor-pointer"

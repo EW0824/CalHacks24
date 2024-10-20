@@ -78,7 +78,7 @@ function ChooseModal({ setSelectedPerson }) {
 					) : (
 						<div>
 							<h2 className="text-xl font-semibold text-center mb-4">
-								Choose a Founder
+								Choose an Investor
 							</h2>
 							<div className="grid grid-cols-2 gap-4">
 								<button

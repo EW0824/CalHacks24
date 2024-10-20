@@ -29,13 +29,21 @@ function extractTopEmotions(emotionScores: {[emotion: string]: number}, n:number
 
 // Connect to Hume WebSocket and pass the message handling callback
 export async function connectToHume(
+  t: string,
   setSocket: (socket: Hume.empathicVoice.chat.ChatSocket) => void,
   handleMessage: (role: string, content: string, topEmotions: { emotion: string; score: any }[]) => void  // <-- Add message handler
 ) {
   if (!client) {
+    let key: string;
+    if (t === "student") {
+      key = import.meta.env.VITE_HUME_STUDENT
+    } else {
+      key = import.meta.env.VITE_HUME_FOUNDER
+    }
+    console.log(key)
     client = new HumeClient({
       apiKey: import.meta.env.VITE_HUME_API_KEY || '',
-      secretKey: import.meta.env.VITE_HUME_SECRET_KEY || '',
+      secretKey: key || "",
     });
   }
 
