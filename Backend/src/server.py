@@ -12,14 +12,9 @@ from hume.expression_measurement.batch import Face, Models
 from hume.expression_measurement.batch.types import InferenceBaseRequest
 
 from transcription import extract_video_audio
-# from utils import transcribe_video
+from groq import Groq
 
-# from EVI.authenticator import Authenticator
-# from EVI.connection import Connection
-# from EVI.devices import AudioDevices
-# from EVI.evi import start_conversation
-# from EVI.transcriber import Transcriber
-
+GROQ_KEY = os.getenv("GROQ_KEY")
 API_KEY = os.getenv("API_KEY")
 
 load_dotenv()
@@ -342,6 +337,59 @@ def get_feedback() -> tuple:
         transcript = str(data.get("transcript", "no response"))
         questions = data.get("questions", None)  # No need for explicit typing here
         behaviors = data.get("behaviors", None)
+        emotions = data.get("emotions", None)
+
+        client = Groq(api_key=os.environ.get(GROQ_KEY),)
+
+        chat_completion = client.chat.completions.create(
+        messages=[
+        {
+            "role": "system",
+            "content": 
+            """"
+            You are an interview coach. Your task is to evaluate the performance 
+            and give specific feedback on how the user performs in their interview. 
+            Make your performance assessment based on a variety of data sources 
+            including facial expressions, quality and depth of answers, and emotions.
+            Outline both strengths and weaknesses of the user including ways to improve. 
+            Be extremely thorough and specific in your feedback. 
+            Here are some notes about the data:
+            The transcript is a dictionary where the key is the finish time in seconds 
+            of the value in the recorded video and the value is the actual text the 
+            user spoke. The questions are the questions the LLM asks which are in the 
+            form of an array. The emotions is a dictionary of length 48 containing an 
+            emotion as a key and its corresponding score as a value. 
+            """
+        },
+        {
+            "role": "user",
+            "content": 
+            f""" 
+            "Match the questions, {questions}, with the responses present in the transcripts, 
+            {transcript}. Make use of the time stamps which are the keys in the transcript 
+            to identify which questions the transcript data points belong to. Also make sure 
+            to take into account the behaviors, {behaviors} of the users as they answer the 
+            questions. And also take into account the emotions, {emotions} of the users as they 
+            answer these interview questions. You need to give comprehensive feedback to the 
+            user about how they did on their interview. Talk about things they did well as well 
+            as things they need to improve upon. To do this, reference their response content, 
+            its relevance, its quality, as well as the user's emotions and behaviors. Give them a 
+            question by question breakdown of what they can do better. And lastly, give them an 
+            overall interview success score based on psychological literature on successful 
+            interviews."
+            """
+            ,
+        }
+    ],
+        model="llama3.1-8b-instant",
+    )
+
+        print(chat_completion.choices[0].message.content)
+
+
+
+        #Groq Client Implementation Here
+
 
         behaviorFeedback = "You maintained good eye contact but appeared anxious at times. Practice will help reduce fidgeting."
         qaFeedback = "Your answers were mostly clear, but try to elaborate more on your experiences."
