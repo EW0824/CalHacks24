@@ -104,6 +104,14 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 		}
 	};
 
+	useEffect(() => {
+		localStorage.setItem("behavior", null);
+		localStorage.setItem("feedback", null);
+		localStorage.setItem("video", null);
+		localStorage.setItem("responses", null);
+		localStorage.setItem("score", null);
+	}, []);
+
 	// Put userEmotionData in local storage
 	useEffect(() => {
 		if (userEmotionData.length > 0) {
@@ -188,8 +196,8 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 	};
 
 	const uploadVideo = async (videoBlob) => {
-		setModalVisible(true); // Show the modal when starting the upload
 		try {
+			setModalVisible(true);
 			const formData = new FormData();
 			formData.append("file", videoBlob, "recording.mp4");
 
@@ -200,8 +208,6 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 					headers: { "Content-Type": "multipart/form-data" },
 				},
 			);
-
-			setLoading(false);
 
 			const transcript = voiceResponse.data.transcription || "no response";
 
@@ -228,12 +234,6 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 				behaviors[key] = behaviors[key].sum / behaviors[key].count;
 			}
 
-			console.log(
-				transcript,
-				JSON.parse(localStorage.getItem("questions")),
-				behaviors,
-				JSON.parse(localStorage.getItem("emotions")),
-			);
 			const feedbackResponse = await axios.post(
 				"http://localhost:8080/api/postFeedback",
 				JSON.stringify({
@@ -257,7 +257,7 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 			localStorage.setItem("responses", JSON.stringify(transcript));
 			localStorage.setItem("score", score);
 
-			// setModalVisible(true);
+			setLoading(false);
 		} catch (error) {
 			setModalVisible(false);
 			console.error(error);

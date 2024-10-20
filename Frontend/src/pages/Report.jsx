@@ -130,7 +130,7 @@ const Report = ({ isDarkTheme, setIsDarkTheme }) => {
 						className={`${isDarkTheme ? "text-white bg-gray-800" : "text-black bg-white"}  shadow-md rounded-lg p-4 mb-4`}
 					>
 						<h2 className="text-2xl font-semibold mb-4">Questions</h2>
-						<p>
+						<div>
 							{questions?.map((q, i) => (
 								<ul key={q}>
 									<li>
@@ -138,7 +138,7 @@ const Report = ({ isDarkTheme, setIsDarkTheme }) => {
 									</li>
 								</ul>
 							))}
-						</p>
+						</div>
 					</div>
 
 					{/* Response Component */}
