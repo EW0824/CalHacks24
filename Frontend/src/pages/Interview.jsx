@@ -13,9 +13,12 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 	const [isInterviewing, setIsInterviewing] = useState(false); // State to manage interview status
 	const mediaStream = useRef(null); // Store media stream reference
 	const [loading, setLoading] = useState(true);
+	const [questions, setQuestions] = useState([]);
 
 	const askQuestion = async (question) => {
 		try {
+			setQuestions((prev) => [...prev, question]);
+
 			const response = await axios.post(
 				"http://localhost:8080/api/speak",
 				{ question: question },
@@ -123,7 +126,6 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 			setLoading(false);
 
 			const transcript = voiceResponse.data.transcription || "no response";
-			const questions = ["wofijwefo0ijh", "wofiwhoih"]; // has to be fetched from somewhere
 
 			const behaviors = {};
 			for (const val of voiceResponse.data.behavior) {
