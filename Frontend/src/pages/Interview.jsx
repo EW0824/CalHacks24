@@ -4,7 +4,7 @@ import elon from "/elon.png";
 import { SunIcon, MoonIcon } from "@heroicons/react/outline"; // Install heroicons if you haven't
 import Modal from "../components/Modal.jsx";
 import { connectToHume, captureAudio, disconnectFromHume } from "./EVI.ts";
-// import { useTTS } from "@cartesia/cartesia-js/react";
+import { useTTS } from "@cartesia/cartesia-js/react";
 
 // could be interviewer based for practice
 // could be for companies to evaluate people
