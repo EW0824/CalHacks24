@@ -23,19 +23,18 @@ ChartJS.register(
 
 const Report = ({ isDarkTheme, setIsDarkTheme }) => {
 	const [behaviors, setBehaviors] = useState({});
-	// const [behaviorFeedback, setBehaviorFeedback] = useState("");
-	// const [qaFeedback, setQaFeedback] = useState("");
-	// const [score, setScore] = useState(0);
 	const [video, setVideo] = useState(null);
 	const [questions, setQuestions] = useState([]);
 	const [response, setResponse] = useState([]);
 	const [feedback, setFeedback] = useState([]);
+	const [score, setScore] = useState(0);
 
 	useEffect(() => {
 		try {
 			setBehaviors(JSON.parse(localStorage.getItem("behavior")));
 			setFeedback(JSON.parse(localStorage.getItem("feedback")));
 			setVideo(localStorage.getItem("video"));
+			setScore(localStorage.getItem("score"));
 			const q = JSON.parse(localStorage.getItem("questions"));
 			const res = JSON.parse(localStorage.getItem("responses"));
 
@@ -50,16 +49,19 @@ const Report = ({ isDarkTheme, setIsDarkTheme }) => {
 	}, []);
 
 	// Sample data for emotions and scores
-	const emotionData = {
-		labels: Object.keys(behaviors),
-		datasets: [
-			{
-				label: "Behavior Frequency",
-				data: Object.values(behaviors),
-				backgroundColor: "rgba(75, 192, 192, 0.6)",
-			},
-		],
-	};
+	let emotionData;
+	if (behaviors) {
+		emotionData = {
+			labels: Object.keys(behaviors),
+			datasets: [
+				{
+					label: "Behavior Frequency",
+					data: Object.values(behaviors),
+					backgroundColor: "rgba(75, 192, 192, 0.6)",
+				},
+			],
+		};
+	}
 
 	const toggleTheme = () => {
 		setIsDarkTheme(!isDarkTheme); // Toggle the theme
@@ -103,22 +105,24 @@ const Report = ({ isDarkTheme, setIsDarkTheme }) => {
 						className={`${isDarkTheme ? "bg-gray-800 text-white" : "bg-white"} shadow-md rounded-lg p-4 mb-4`}
 					>
 						<h2 className="text-2xl font-semibold mb-4">Behavior Frequency</h2>
-						<Bar
-							data={emotionData}
-							options={{
-								responsive: true,
-								scales: {
-									y: {
-										beginAtZero: true,
-										ticks: {
-											autoSkip: true,
-											maxTicksLimit: 5,
+						{emotionData && (
+							<Bar
+								data={emotionData}
+								options={{
+									responsive: true,
+									scales: {
+										y: {
+											beginAtZero: true,
+											ticks: {
+												autoSkip: true,
+												maxTicksLimit: 5,
+											},
 										},
 									},
-								},
-							}}
-							height={200} // Set the height of the chart
-						/>
+								}}
+								height={200} // Set the height of the chart
+							/>
+						)}
 					</div>
 
 					{/* Questions Component */}
@@ -128,7 +132,7 @@ const Report = ({ isDarkTheme, setIsDarkTheme }) => {
 						<h2 className="text-2xl font-semibold mb-4">Questions</h2>
 						<p>
 							{questions?.map((q, i) => (
-								<ul key={`${i}${q}`}>
+								<ul key={q}>
 									<li>
 										{i + 1}. {q}
 									</li>
@@ -142,15 +146,15 @@ const Report = ({ isDarkTheme, setIsDarkTheme }) => {
 						className={`${isDarkTheme ? "text-white bg-gray-800" : "text-black bg-white"}  shadow-md rounded-lg p-4`}
 					>
 						<h2 className="text-2xl font-semibold mb-4">Response</h2>
-						<p>
+						<div>
 							{response?.map((q, i) => (
-								<ul key={`${i}${q}`}>
+								<ul key={q}>
 									<li>
 										{i + 1}. {q}
 									</li>
 								</ul>
 							))}
-						</p>
+						</div>
 					</div>
 				</div>
 
@@ -183,16 +187,16 @@ const Report = ({ isDarkTheme, setIsDarkTheme }) => {
 						className={`${isDarkTheme ? "bg-gray-800 text-white" : "bg-white"} shadow-md rounded-lg p-4 mb-4`}
 					>
 						<h2 className="text-2xl font-semibold mb-4">Feedback</h2>
-						<p>
-							{/* {feedback?.map((val, i) => (
-								<li key={val}>
-									<ul>
-										{i + 1}. {val}
-									</ul>
-								</li>
-							))} */}
+						<div>
 							<FeedbackList feedback={feedback} />
-						</p>
+						</div>
+					</div>
+
+					<div
+						className={`${isDarkTheme ? "bg-gray-800 text-white" : "bg-white"} shadow-md rounded-lg p-4 mb-4`}
+					>
+						<h2 className="text-2xl font-semibold mb-4">Score</h2>
+						<div>{score}/100</div>
 					</div>
 				</div>
 			</div>

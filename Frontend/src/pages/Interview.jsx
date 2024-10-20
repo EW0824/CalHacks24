@@ -1,10 +1,26 @@
 import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
-import elon from "/elon.png";
+import elon from "/elon.jpg";
+import oprah from "/oprah.jpeg";
+import interviewer from "/interviewer.jpg";
+import zuck from "/zuck.avif";
+import lebron from "/lebron.webp";
 import { SunIcon, MoonIcon } from "@heroicons/react/outline"; // Install heroicons if you haven't
 import Modal from "../components/Modal.jsx";
 import { connectToHume, captureAudio, disconnectFromHume } from "./EVI.ts";
 import { useTTS } from "@cartesia/cartesia-js/react";
+import ChooseModal from "../components/ChooseModal.jsx";
+
+const config = {
+	elon: "28f6b994-cfb3-4b38-9893-1ca700df267f",
+	"Peter Thiel": "eb85d26c-f6fe-4138-b548-b9d87493463c",
+	"Mira Murati": "947c0352-f808-4cae-947d-a4b09a7e1329",
+	zuck: "c37b188f-62b2-4747-8f65-d355afddd127",
+	"Jack Ma": "0f2b77ef-bf01-45d9-beb3-b12ea8c7dfb4",
+	lebron: "d660091e-01f7-4b70-b1bf-90b0ac591d94",
+	oprah: "6499ba36-c1c1-4d81-88f8-725b8e761d26",
+	student: "a0e99841-438c-4a64-b679-ae501e7d6091",
+};
 
 // could be interviewer based for practice
 // could be for companies to evaluate people
@@ -23,6 +39,15 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 	const [startTime, setStartTime] = useState(null);
 	const [userEmotionData, setUserEmotionData] = useState([]);
 
+	const [selectedPerson, setSelectedPerson] = useState("elon");
+	const mapping = {
+		elon: elon,
+		oprah: oprah,
+		lebron: lebron,
+		zuck: zuck,
+		student: interviewer,
+	};
+
 	const tts = useTTS({
 		apiKey: import.meta.env.VITE_CARTESIA_API_KEY,
 		sampleRate: 44100,
@@ -35,7 +60,7 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 			model_id: "sonic-english",
 			voice: {
 				mode: "id",
-				id: "a0e99841-438c-4a64-b679-ae501e7d6091",
+				id: config[selectedPerson],
 			},
 			transcript: question,
 		});
@@ -99,13 +124,6 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 	*/
 
 	const startVideo = async () => {
-		localStorage.setItem("behavior", null);
-		localStorage.setItem("behaviorFeedback", null);
-		localStorage.setItem("qaFeedback", null);
-		localStorage.setItem("score", null);
-		localStorage.setItem("video", null);
-		localStorage.setItem("questions", null);
-		localStorage.setItem("responses", null);
 		try {
 			mediaStream.current = await navigator.mediaDevices.getUserMedia({
 				video: true, // Request video stream
@@ -231,11 +249,15 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 			);
 
 			const feedback = feedbackResponse.data.feedback;
+			const score = feedbackResponse.data.score;
 
 			localStorage.setItem("behavior", JSON.stringify(behaviors));
 			localStorage.setItem("feedback", JSON.stringify(feedback));
 			localStorage.setItem("video", URL.createObjectURL(videoBlob));
 			localStorage.setItem("responses", JSON.stringify(transcript));
+			localStorage.setItem("score", score);
+
+			// setModalVisible(true);
 		} catch (error) {
 			setModalVisible(false);
 			console.error(error);
@@ -320,7 +342,8 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 		<div
 			className={`transition-colors duration-500 min-h-screen flex flex-col items-center ${isDarkTheme ? "bg-gray-900" : "bg-gray-100"}`}
 		>
-			{/* Back Button */}
+			<ChooseModal setSelectedPerson={setSelectedPerson} />
+
 			<a href="/" className="absolute top-4 left-4 cursor-pointer">
 				<button
 					type="button"
@@ -355,7 +378,7 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 				{/* Interviewer Box */}
 				<div className="flex justify-center items-center h-[500px]">
 					<img
-						src={elon}
+						src={mapping[selectedPerson]}
 						alt="Interviewer"
 						className="w-full h-full object-cover rounded-lg"
 					/>
@@ -382,8 +405,8 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 
 				<div>
 					{/* Display conversation history */}
-					{conversationHistory.map((message, index) => (
-						<p key={index}>
+					{conversationHistory.map((message) => (
+						<p key={message}>
 							<strong>{message.newRole}:</strong> {message.content}
 						</p>
 					))}

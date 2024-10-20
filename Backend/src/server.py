@@ -282,6 +282,211 @@ def get_feedback() -> tuple:
             api_key=GROQ_KEY,
         )
 
+        facial_expression_weights = {
+            "AU43 EYE CLOSURE": -1,
+            "HAND OVER FOREHEAD": -1,
+            "AU54 HEAD DOWN": -1,
+            "HAND OVER MOUTH": -1,
+            "AU7 LIDS TIGHT": -1,
+            "AU12 LIP CORNER PULLER": 1,
+            "AU17 CHIN RAISER": 0,
+            "AU9 NOSE WRINKLE": -1,
+            "CRY": -2,
+            "SMILE": 1,
+            "LAUGH": 2,
+            "AU6 CHEEK RAISE": 1,
+            "AU53 HEAD UP": 0,
+            "AU19 TONGUE SHOW": 0,
+            "LICKING LIP": 0,
+            "AU37 LIP WIPE": 0,
+            "TENSE BROW LOWERER": -1,
+            "AU32 BITE": 0,
+            "AU10 UPPER LIP RAISER": 0,
+            "AU1 INNER BROW RAISE": -1,
+            "WIDE-EYED": 1,
+            "AU5 UPPER LID RAISE": 0,
+            "JAW DROP": -1,
+            "GASP": -1,
+            "AU27 MOUTH STRETCH": 0,  # Add more expressions as needed from the image
+        }
+        emotion_weights = {
+            "Admiration": 1,
+            "Adoration": 0,
+            "Aesthetic appreciation": 0,
+            "Amusement": 0,
+            "Anger": -2,
+            "Anxiety": -2,
+            "Awe": 0,
+            "Awkwardness": -1,
+            "Boredom": -1,
+            "Calmness": 1,
+            "Concentration": 1,
+            "Confusion": -1,
+            "Contemplation": 1,
+            "Contempt": -2,
+            "Contentment": 0,
+            "Craving": 0,
+            "Determination": 1,
+            "Desire": 0,
+            "Disappointment": -2,
+            "Disapproval": -1,
+            "Disgust": -2,
+            "Distress": -2,
+            "Doubt": -1,
+            "Ecstasy": 0,
+            "Embarrassment": -1,
+            "Empathetic pain": -1,
+            "Enthusiasm": 1,
+            "Entrancement": 0,
+            "Envy": -1,
+            "Excitement": 0,
+            "Fear": -2,
+            "Gratitude": 1,
+            "Guilt": -2,
+            "Horror": -2,
+            "Interest": 0,
+            "Joy": 0,
+            "Love": 0,
+            "Nostalgia": 0,
+            "Pain": -2,
+            "Pride": 1,
+            "Realization": 0,
+            "Relief": 0,
+            "Romance": 0,
+            "Sadness": -2,
+            "Sarcasm": -1,
+            "Satisfaction": 0,
+            "Shame": -2,
+            "Surprise(negative)": -1,
+            "Surprise(positive)": 0,
+            "Sympathy": 0,
+            "Tiredness": -1,
+            "Triumph": 0,
+        }
+
+        # LLM Quality Scoring Function using Groq Client
+        def get_llm_quality_score_groq(transcript, questions, behaviors, emotions):
+            try:
+                client = Groq(api_key=GROQ_KEY)
+                length = min(len(questions), len(transcript))
+                quality_scores = []
+                for i in range(length):
+                    chat_completion = client.chat.completions.create(
+                        messages=[
+                            {
+                                "role": "system",
+                                "content": """
+                                The response should be strictly less than 70 words. You are an interview coach.
+                                Your task is to evaluate the performance and give specific feedback on how the user
+                                performs in their interview. Make your performance assessment based on a variety of data
+                                sources including facial expressions, quality and depth of answers, and emotions.
+                                Outline both strengths and weaknesses of the user including ways to improve. Be extremely thorough and specific in your feedback.
+                                Here are some notes about the data:
+                                The transcript is a dictionary where the key is the finish time in seconds of the value in the recorded video and the value is the actual text the user spoke.
+                                The questions are the questions the LLM asks which are in the form of an array.
+                                The emotions is a dictionary of length 48 containing an emotion as a key and its corresponding score as a value.
+                                """,
+                            },
+                            {
+                                "role": "user",
+                                "content": f"""
+                                Match the question, '{questions[i]}', with the response present in the transcript, '{transcript}'.
+                                Make use of the timestamps, which are the keys in the transcript, to identify which questions the transcript data points belong to.
+                                Also, consider the behaviors, '{behaviors}', of the user as they answer the questions.
+                                And take into account the emotions, '{emotions}', of the user as they answer these interview questions.
+                                Provide comprehensive feedback to the user on their interview performance.
+                                Address things they did well and areas for improvement. Reference the quality, relevance, and completeness of the response as well as the user's emotions and behaviors.
+                                Assign a score out of 40 for the response quality based on psychological literature on successful interviews.
+                                """,
+                            },
+                        ],
+                        model="llama-3.1-8b-instant",
+                    )
+                    # Parse the score from the LLM response (assuming LLM returns a clear score statement)
+                    feedback = chat_completion.choices[0].message.content
+                    try:
+                        # Extract the score if mentioned in the feedback (this part may change based on LLM response format)
+                        score = float(
+                            [word for word in feedback.split() if word.isdigit()][0]
+                        )  # Example parsing for a numeric score
+                        quality_scores.append(score)
+                    except (IndexError, ValueError):
+                        quality_scores.append(
+                            30
+                        )  # Assign a default score if parsing fails
+                # Calculate the average quality score across all questions
+                return (
+                    sum(quality_scores) / len(quality_scores) if quality_scores else 0
+                )
+            except Exception as e:
+                print(f"Error fetching LLM quality score: {e}")
+                return 20  # Default value if the LLM call fails
+
+        def calculate_emotional_score(emotions, emotion_weights):
+            total_score = 0
+            for interval in emotions:
+                for time, emotion_data in interval.items():
+                    if isinstance(emotion_data, dict):
+                        for emotion, prominence in emotion_data.items():
+                            weight = emotion_weights.get(
+                                emotion, 0
+                            )  # Get the weight, default to 0 if emotion not found
+                            total_score += weight * prominence
+            return total_score
+
+        def calculate_updated_facial_expression_score(
+            facial_expressions, facial_expression_weights
+        ):
+            expression_score = 0
+            for interval in facial_expressions:
+                if isinstance(interval, dict):
+                    for expression, prominence in interval.items():
+                        weight = facial_expression_weights.get(
+                            expression.upper(), 0
+                        )  # Default to 0 if not in the weights dictionary
+                        expression_score += weight * prominence
+            return expression_score
+
+        # Calculate the final score for the interview (includes LLM integration)
+        def calculate_interview_score_with_llm(
+            emotions,
+            facial_expressions,
+            emotion_weights,
+            transcript,
+            questions,
+            behaviors,
+        ):
+            emotional_score = calculate_emotional_score(emotions, emotion_weights)
+            facial_expression_score = calculate_updated_facial_expression_score(
+                facial_expressions, facial_expression_weights
+            )
+            # Fetch the LLM quality score using the Groq integration
+            llm_quality_score = get_llm_quality_score_groq(
+                transcript, questions, behaviors, emotions
+            )
+            # Normalize and combine scores (weights can be adjusted based on the importance of each factor)
+            total_emotional_score = max(
+                0, min(emotional_score, 40)
+            )  # Cap at 40 for normalization
+            total_facial_score = max(
+                0, min(facial_expression_score, 20)
+            )  # Cap at 20 for normalization
+            # Final score calculation with LLM quality score
+            final_score = total_emotional_score + total_facial_score + llm_quality_score
+            return final_score
+
+        facial_expressions = behaviors  # For this example, assuming behaviors and facial_expressions are similar
+        # Calculate the final interview score using LLM integration
+        final_interview_score = calculate_interview_score_with_llm(
+            emotions,
+            facial_expressions,
+            emotion_weights,
+            transcript,
+            questions,
+            behaviors,
+        )
+        print("Final Interview Score (Out of 100):", final_interview_score)
+
         length = min(len(questions), length_of_transcript)
         print("transcript", length_of_transcript, "question: ", len(questions))
 
@@ -331,7 +536,7 @@ def get_feedback() -> tuple:
 
         print(answers)
 
-        return jsonify({"feedback": answers}), 200
+        return jsonify({"feedback": answers, "score": final_interview_score}), 200
     except Exception as e:
         print(f"Error getting feedback: {e}")
         return jsonify({"error": str(e)}), 500
