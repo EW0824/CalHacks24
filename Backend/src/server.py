@@ -2,15 +2,13 @@ import io
 import os
 import tempfile
 import asyncio
-import wave
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, jsonify
 from datetime import datetime
-from cartesia import Cartesia
 from dotenv import load_dotenv
 from hume import AsyncHumeClient
 from hume.expression_measurement.batch import Face, Models
 from hume.expression_measurement.batch.types import InferenceBaseRequest
-
+import json
 from transcription import extract_video_audio
 from groq import Groq
 
@@ -267,66 +265,6 @@ async def upload_video() -> tuple:
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/api/speak", methods=["POST", "OPTIONS"])
-def return_voice():
-    if request.method == "OPTIONS":
-        return jsonify({}), 200  # Respond to preflight request
-
-    try:
-        client = Cartesia(api_key=os.environ.get("CARTESIA_API_KEY"))
-        data = request.get_json()
-        transcript = data.get("question", "")
-
-        voice_id = "a0e99841-438c-4a64-b679-ae501e7d6091"
-        voice = client.voices.get(id=voice_id)
-        model_id = "sonic-english"
-
-        output_format = {
-            "container": "raw",
-            "encoding": "pcm_s16le",
-            "sample_rate": 48000,
-        }
-
-        def generate_wav():
-            # Create an in-memory buffer to write WAV data
-            wav_buffer = io.BytesIO()
-
-            # Prepare to write WAV data
-            with wave.open(wav_buffer, "wb") as wav_file:
-                wav_file.setnchannels(1)  # Mono
-                wav_file.setsampwidth(2)  # 32-bit float PCM (4 bytes)
-                wav_file.setframerate(48000)  # Sample rate
-
-                # Stream the audio and write to WAV
-                for output in client.tts.sse(
-                    model_id=model_id,
-                    transcript=transcript,
-                    voice_embedding=voice["embedding"],
-                    stream=True,
-                    output_format=output_format,
-                ):
-                    buffer = output["audio"]
-                    wav_file.writeframes(buffer)
-
-            # Move to the beginning of the buffer
-            wav_buffer.seek(0)
-            return wav_buffer.read()
-
-        # Return the generated WAV audio as a response
-        return Response(
-            generate_wav(),
-            content_type="audio/wav",
-            headers={
-                "Content-Disposition": "attachment; filename=output.wav",
-                "Cache-Control": "no-cache",
-            },
-        )
-
-    except Exception as e:
-        print(f"Error processing expressions: {e}")
-        return jsonify({"error": str(e)}), 500
-
-
 @app.route("/api/postFeedback", methods=["POST", "OPTIONS"])
 def get_feedback() -> tuple:
     if request.method == "OPTIONS":
@@ -336,72 +274,64 @@ def get_feedback() -> tuple:
         data = request.get_json()
         transcript = str(data.get("transcript", "no response"))
         questions = data.get("questions", None)  # No need for explicit typing here
+        length_of_transcript = data.get("length", len(questions))
         behaviors = data.get("behaviors", None)
         emotions = data.get("emotions", None)
 
-        client = Groq(api_key=os.environ.get(GROQ_KEY),)
+        client = Groq(
+            api_key=GROQ_KEY,
+        )
 
-        chat_completion = client.chat.completions.create(
-        messages=[
-        {
-            "role": "system",
-            "content": 
-            """"
-            You are an interview coach. Your task is to evaluate the performance 
-            and give specific feedback on how the user performs in their interview. 
-            Make your performance assessment based on a variety of data sources 
-            including facial expressions, quality and depth of answers, and emotions.
-            Outline both strengths and weaknesses of the user including ways to improve. 
-            Be extremely thorough and specific in your feedback. 
-            Here are some notes about the data:
-            The transcript is a dictionary where the key is the finish time in seconds 
-            of the value in the recorded video and the value is the actual text the 
-            user spoke. The questions are the questions the LLM asks which are in the 
-            form of an array. The emotions is a dictionary of length 48 containing an 
-            emotion as a key and its corresponding score as a value. 
-            """
-        },
-        {
-            "role": "user",
-            "content": 
-            f""" 
-            "Match the questions, {questions}, with the responses present in the transcripts, 
-            {transcript}. Make use of the time stamps which are the keys in the transcript 
-            to identify which questions the transcript data points belong to. Also make sure 
-            to take into account the behaviors, {behaviors} of the users as they answer the 
-            questions. And also take into account the emotions, {emotions} of the users as they 
-            answer these interview questions. You need to give comprehensive feedback to the 
-            user about how they did on their interview. Talk about things they did well as well 
-            as things they need to improve upon. To do this, reference their response content, 
-            its relevance, its quality, as well as the user's emotions and behaviors. Give them a 
-            question by question breakdown of what they can do better. And lastly, give them an 
-            overall interview success score based on psychological literature on successful 
-            interviews."
-            """
-            ,
-        }
-    ],
-        model="llama3.1-8b-instant",
-    )
+        length = min(len(questions), length_of_transcript)
+        print("transcript", length_of_transcript, "question: ", len(questions))
 
-        print(chat_completion.choices[0].message.content)
+        answers = []
+        print(questions)
+        for i in range(length):
+            chat_completion = client.chat.completions.create(
+                messages=[
+                    {
+                        "role": "system",
+                        "content": """"
+                The response should be strictly less than 70 words. You are an interview coach. 
+                Your task is to evaluate the performance and give specific feedback on how 
+                the user performs in their interview. Make your performance assessment based on a 
+                variety of data sources including facial expressions, quality and depth of answers, 
+                and emotions. Outline both strengths and weaknesses of the user including 
+                ways to improve. Be extremely thorough and specific in your feedback.
+                Here are some notes about the data:
+                The transcript is a dictionary where the key is the finish time in seconds
+                of the value in the recorded video and the value is the actual text the
+                user spoke. The questions are the questions the LLM asks which are in the
+                form of an array. The emotions is a dictionary of length 48 containing an
+                emotion as a key and its corresponding score as a value.
+                """,
+                    },
+                    {
+                        "role": "user",
+                        "content": f"""
+                "The response should be strictly less than 70 words. Match the questions, {questions[i]}, with the responses present in the transcripts,
+                {transcript}. Make use of the time stamps which are the keys in the transcript
+                to identify which questions the transcript data points belong to. Also make sure
+                to take into account the behaviors, {behaviors} of the users as they answer the
+                questions. And also take into account the emotions, {emotions} of the users as they
+                answer these interview questions. You need to give comprehensive feedback to the
+                user about how they did on their interview. Talk about things they did well as well
+                as things they need to improve upon. To do this, reference their response content,
+                its relevance, its quality, as well as the user's emotions and behaviors. Give them a
+                question by question breakdown of what they can do better. And lastly, give them an
+                overall interview success score based on psychological literature on successful
+                interviews."
+                """,
+                    },
+                ],
+                model="llama-3.1-8b-instant",
+            )
+            answers.append(chat_completion.choices[0].message.content)
 
+        print(answers)
 
-
-        #Groq Client Implementation Here
-
-
-        behaviorFeedback = "You maintained good eye contact but appeared anxious at times. Practice will help reduce fidgeting."
-        qaFeedback = "Your answers were mostly clear, but try to elaborate more on your experiences."
-        score = 78
-
-        return jsonify(
-            {
-                "behaviorFeedback": behaviorFeedback,
-                "qaFeedback": qaFeedback,
-                "score": score,
-            }
-        ), 200
+        return jsonify({"feedback": answers}), 200
     except Exception as e:
         print(f"Error getting feedback: {e}")
         return jsonify({"error": str(e)}), 500

@@ -23,24 +23,23 @@ ChartJS.register(
 
 const Report = ({ isDarkTheme, setIsDarkTheme }) => {
 	const [behaviors, setBehaviors] = useState({});
-	const [behaviorFeedback, setBehaviorFeedback] = useState("");
-	const [qaFeedback, setQaFeedback] = useState("");
-	const [score, setScore] = useState(0);
+	// const [behaviorFeedback, setBehaviorFeedback] = useState("");
+	// const [qaFeedback, setQaFeedback] = useState("");
+	// const [score, setScore] = useState(0);
 	const [video, setVideo] = useState(null);
 	const [questions, setQuestions] = useState([]);
 	const [response, setResponse] = useState([]);
+	const [feedback, setFeedback] = useState([]);
 
 	useEffect(() => {
 		try {
 			setBehaviors(JSON.parse(localStorage.getItem("behavior")));
-			setBehaviorFeedback(localStorage.getItem("behaviorFeedback"));
-			setQaFeedback(localStorage.getItem("qaFeedback"));
-			setScore(localStorage.getItem("score"));
+			setFeedback(JSON.parse(localStorage.getItem("feedback")));
 			setVideo(localStorage.getItem("video"));
 			const q = JSON.parse(localStorage.getItem("questions"));
 			const res = JSON.parse(localStorage.getItem("responses"));
 
-			const responsesArray = res.map((r) => Object.values(r).join("\n"));
+			const responsesArray = res?.map((r) => Object.values(r).join("\n"));
 			setResponse(responsesArray);
 
 			const questionsArray = q.map((question) => question);
@@ -128,7 +127,7 @@ const Report = ({ isDarkTheme, setIsDarkTheme }) => {
 					>
 						<h2 className="text-2xl font-semibold mb-4">Questions</h2>
 						<p>
-							{questions.map((q, i) => (
+							{questions?.map((q, i) => (
 								<ul key={`${i}${q}`}>
 									<li>
 										{i + 1}. {q}
@@ -144,7 +143,7 @@ const Report = ({ isDarkTheme, setIsDarkTheme }) => {
 					>
 						<h2 className="text-2xl font-semibold mb-4">Response</h2>
 						<p>
-							{response.map((q, i) => (
+							{response?.map((q, i) => (
 								<ul key={`${i}${q}`}>
 									<li>
 										{i + 1}. {q}
@@ -183,29 +182,56 @@ const Report = ({ isDarkTheme, setIsDarkTheme }) => {
 					<div
 						className={`${isDarkTheme ? "bg-gray-800 text-white" : "bg-white"} shadow-md rounded-lg p-4 mb-4`}
 					>
-						<h2 className="text-2xl font-semibold mb-4">Behavioral Feedback</h2>
-						<p>{behaviorFeedback}</p>
-					</div>
-
-					{/* Question Answering Feedback */}
-					<div
-						className={`${isDarkTheme ? "bg-gray-800 text-white" : "bg-white"} shadow-md rounded-lg p-4`}
-					>
-						<h2 className="text-2xl font-semibold mb-4">
-							Question Answering Feedback
-						</h2>
-						<p>{qaFeedback}</p>
-					</div>
-
-					{/* Score Display */}
-					<div
-						className={`${isDarkTheme ? "bg-gray-800 text-white" : "bg-white"} shadow-md rounded-lg p-4 mt-4`}
-					>
-						<h2 className="text-2xl font-semibold mb-4">Score</h2>
-						<p className="text-3xl">{score}/100</p>
+						<h2 className="text-2xl font-semibold mb-4">Feedback</h2>
+						<p>
+							{/* {feedback?.map((val, i) => (
+								<li key={val}>
+									<ul>
+										{i + 1}. {val}
+									</ul>
+								</li>
+							))} */}
+							<FeedbackList feedback={feedback} />
+						</p>
 					</div>
 				</div>
 			</div>
+		</div>
+	);
+};
+
+const FeedbackList = ({ feedback }) => {
+	const [expandedIndex, setExpandedIndex] = useState(null);
+
+	const toggleExpand = (index) => {
+		if (expandedIndex === index) {
+			setExpandedIndex(null); // Collapse if the same index is clicked again
+		} else {
+			setExpandedIndex(index); // Expand the selected index
+		}
+	};
+
+	return (
+		<div>
+			<ul>
+				{feedback?.map((val, i) => (
+					<li key={val} className="my-2">
+						{/* Toggle button */}
+						<button
+							type="button"
+							onClick={() => toggleExpand(i)}
+							className="text-left w-full bg-blue-500 text-white font-semibold py-2 px-4 rounded hover:bg-blue-600 transition duration-200"
+						>
+							{i + 1}. Question {i + 1}
+						</button>
+
+						{/* Show feedback if expanded */}
+						{expandedIndex === i && (
+							<div className="p-4 bg-gray-100 border rounded mt-2">{val}</div>
+						)}
+					</li>
+				))}
+			</ul>
 		</div>
 	);
 };

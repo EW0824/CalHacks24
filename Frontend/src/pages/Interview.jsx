@@ -28,14 +28,8 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 		sampleRate: 44100,
 	});
 
-
 	const askQuestion = async (question) => {
-		// setQuestions((prev) => [...prev, question]);
-		setQuestions((prev) => {
-			const updatedQuestions = [...prev, question];
-			localStorage.setItem("questions", JSON.stringify(updatedQuestions));
-			return updatedQuestions;
-		});
+		setQuestions((prev) => [...prev, question]);
 
 		const response = await tts.buffer({
 			model_id: "sonic-english",
@@ -53,43 +47,52 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 		Handle message received from Hume
 	*/
 	const handleMessage = async (role, content, emotions) => {
-
 		// Get the timestamp from startTime
 		const startTime = localStorage.getItem("startTime");
 
 		const currentTime = Date.now();
-		const timestamp = startTime ? ((currentTime - startTime) / 1000).toFixed(2) : "0.00";
+		const timestamp = startTime
+			? ((currentTime - startTime) / 1000).toFixed(2)
+			: "0.00";
 
-		console.log("Received message from Hume:", { role, content , emotions, timestamp});
+		console.log("Received message from Hume:", {
+			role,
+			content,
+			emotions,
+			timestamp,
+		});
 
 		if (role === "assistant") {
-			// await askQuestion(content);
+			await askQuestion(content);
 		}
 
 		// Turn user vs assistant -> User vs Interviewer
-		const newRole = (role === "assistant" ? "Interviewer" : "User");
+		const newRole = role === "assistant" ? "Interviewer" : "User";
 		// Push new message to the conversation history state
-		setConversationHistory(prevHistory => [
+		setConversationHistory((prevHistory) => [
 			...prevHistory,
-			{ newRole, content, emotions, timestamp},
+			{ newRole, content, emotions, timestamp },
 		]);
-		
-		if (role === "user") {
-			setUserEmotionData((prevData) => [
-				...prevData,
-				{ timestamp, emotions },
-			])
-		}
 
+		if (role === "user") {
+			setUserEmotionData((prevData) => [...prevData, { timestamp, emotions }]);
+		}
 	};
 
 	// Put userEmotionData in local storage
 	useEffect(() => {
 		if (userEmotionData.length > 0) {
-		  localStorage.setItem("emotions", JSON.stringify(userEmotionData));
-		  console.log("Emotions data updated in local storage", userEmotionData);
+			localStorage.setItem("emotions", JSON.stringify(userEmotionData));
+			console.log("Emotions data updated in local storage", userEmotionData);
 		}
-	  }, [userEmotionData]);
+	}, [userEmotionData]);
+
+	useEffect(() => {
+		if (questions.length > 0) {
+			localStorage.setItem("questions", JSON.stringify(questions));
+			console.log("Questions data updated in local storage", questions);
+		}
+	}, [questions]);
 
 	/*
 	Start & Stop Video
@@ -125,7 +128,6 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 			videoRef.current.srcObject = null; // Clear video stream
 		}
 	};
-
 
 	/*
 	Start & Stop Recording
@@ -180,7 +182,6 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 					headers: { "Content-Type": "multipart/form-data" },
 				},
 			);
-			console.log(voiceResponse);
 
 			setLoading(false);
 
@@ -209,28 +210,30 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 				behaviors[key] = behaviors[key].sum / behaviors[key].count;
 			}
 
+			console.log(
+				transcript,
+				JSON.parse(localStorage.getItem("questions")),
+				behaviors,
+				JSON.parse(localStorage.getItem("emotions")),
+			);
 			const feedbackResponse = await axios.post(
 				"http://localhost:8080/api/postFeedback",
 				JSON.stringify({
 					transcript: transcript,
-					questions: questions,
+					questions: JSON.parse(localStorage.getItem("questions")),
 					behaviors: behaviors,
+					emotions: JSON.parse(localStorage.getItem("emotions")),
+					length: Object.keys(transcript).length,
 				}),
 				{
 					headers: { "Content-Type": "application/json" },
 				},
 			);
 
-			const behaviorFeedback = feedbackResponse.data.behaviorFeedback;
-			const qaFeedback = feedbackResponse.data.qaFeedback;
-			const score = feedbackResponse.data.score;
-
-			console.log(localStorage.getItem("questions"));
+			const feedback = feedbackResponse.data.feedback;
 
 			localStorage.setItem("behavior", JSON.stringify(behaviors));
-			localStorage.setItem("behaviorFeedback", behaviorFeedback);
-			localStorage.setItem("qaFeedback", qaFeedback);
-			localStorage.setItem("score", score);
+			localStorage.setItem("feedback", JSON.stringify(feedback));
 			localStorage.setItem("video", URL.createObjectURL(videoBlob));
 			localStorage.setItem("responses", JSON.stringify(transcript));
 		} catch (error) {
@@ -239,14 +242,13 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 		}
 	};
 
-
 	/*
 	Start & Stop Interview
 	*/
 	const startInterview = async () => {
 		startVideo();
 		const startTime = Date.now();
-		setStartTime(startTime); 		// Begin time keepin
+		setStartTime(startTime); // Begin time keepin
 		localStorage.setItem("startTime", startTime);
 		console.log("Start time is ", startTime); // for debug
 		await connectToHume(setSocket, handleMessage);
@@ -271,7 +273,7 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 					"Content-Type": "application/json",
 				},
 				body: JSON.stringify(emotions),
-			})
+			});
 			console.log("Emotions data sent to backend", emotions);
 		} catch (error) {
 			console.error("Failed to send emotions data to backend: ", error);
