@@ -1,2 +1,5 @@
 uploads
 venv
+.env
+__pycache__
+split_videos

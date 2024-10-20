@@ -1,4 +1,7 @@
 Flask==3.0.3
 Flask-Cors==5.0.0
 openai-whisper==20240930
+python-dotenv==1.0.1
+cartesia==1.0.14
+hume==0.7.2
 moviepy==1.0.3

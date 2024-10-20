@@ -14,6 +14,30 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 	const mediaStream = useRef(null); // Store media stream reference
 	const [loading, setLoading] = useState(true);
 
+	const askQuestion = async (question) => {
+		try {
+			const response = await axios.post(
+				"http://localhost:8080/api/speak",
+				{ question: question },
+				{
+					headers: {
+						"Content-Type": "application/json",
+					},
+					responseType: "arraybuffer", // Ensure response is treated as binary data
+				},
+			);
+
+			// Create a blob from the response data and save it for manual testing
+			const audioBlob = new Blob([response.data], { type: "audio/wav" });
+			const audioUrl = URL.createObjectURL(audioBlob);
+
+			const audio = new Audio(audioUrl);
+			audio.play();
+		} catch (error) {
+			console.error("Error playing audio:", error);
+		}
+	};
+
 	const startVideo = async () => {
 		try {
 			mediaStream.current = await navigator.mediaDevices.getUserMedia({
@@ -23,6 +47,7 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 			if (videoRef.current) {
 				videoRef.current.srcObject = mediaStream.current; // Set the video stream to the video element
 			}
+			askQuestion("What is your name?");
 		} catch (err) {
 			console.error("Error accessing webcam: ", err);
 		}
@@ -87,8 +112,7 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 					headers: { "Content-Type": "multipart/form-data" },
 				},
 			);
-
-			console.log(expressionResponse)
+			console.log(expressionResponse);
 
 			const voiceResponse = await axios.post(
 				"http://localhost:8080/api/postVoice",
@@ -102,7 +126,29 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 
 			const transcript = voiceResponse.data.transcription || "no response";
 			const questions = ["wofijwefo0ijh", "wofiwhoih"]; // has to be fetched from somewhere
-			const behaviors = expressionResponse.data.behaviors;
+
+			const behaviors = {};
+			for (const val of expressionResponse.data.top_facs_scores) {
+				const name = val[0];
+				const confidence = val[1];
+
+				// Initialize if the key doesn't exist
+				if (!behaviors[name]) {
+					behaviors[name] = {
+						sum: 0,
+						count: 0,
+					};
+				}
+
+				// Accumulate the sum and count of confidences
+				behaviors[name].sum += confidence;
+				behaviors[name].count += 1;
+			}
+
+			// Calculate the average for each key
+			for (const key in behaviors) {
+				behaviors[key] = behaviors[key].sum / behaviors[key].count;
+			}
 
 			const feedbackResponse = await axios.post(
 				"http://localhost:8080/api/postFeedback",

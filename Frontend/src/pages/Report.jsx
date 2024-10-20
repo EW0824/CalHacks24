@@ -97,7 +97,7 @@ const Report = ({ isDarkTheme, setIsDarkTheme }) => {
 					<div
 						className={`${isDarkTheme ? "bg-gray-800 text-white" : "bg-white"} shadow-md rounded-lg p-4 mb-4`}
 					>
-						<h2 className="text-2xl font-semibold mb-4">Emotion Frequency</h2>
+						<h2 className="text-2xl font-semibold mb-4">Behavior Frequency</h2>
 						<Bar
 							data={emotionData}
 							options={{
