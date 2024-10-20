@@ -188,30 +188,30 @@ def after_request(response):
 
 
 
-########
-# EVI API
-########
+# ########
+# # EVI API
+# ########
 
-@app.route("/api/startConversation", methods=["POST", "OPTIONS"])
-def start_conversation_route():
-    """
-    Start a conversation with Hume AI's EVI via WebSocket and manage audio input/output
-    """
-    if request.method == "OPTIONS":
-        return jsonify({}), 200  # Respond to preflight request
+# @app.route("/api/startConversation", methods=["POST", "OPTIONS"])
+# def start_conversation_route():
+#     """
+#     Start a conversation with Hume AI's EVI via WebSocket and manage audio input/output
+#     """
+#     if request.method == "OPTIONS":
+#         return jsonify({}), 200  # Respond to preflight request
 
-    # Extract user message from request body
-    data = request.get_json()
-    user_message = data.get("message", "")
+#     # Extract user message from request body
+#     data = request.get_json()
+#     user_message = data.get("message", "")
 
-    try:
-        # Start the conversation
-        response = start_conversation(user_message)
-        return jsonify(response), 200
+#     try:
+#         # Start the conversation
+#         response = start_conversation(user_message)
+#         return jsonify(response), 200
     
-    except Exception as e:
-        print(f"Error starting conversation: {e}")
-        return jsonify({"error": str(e)}), 500
+#     except Exception as e:
+#         print(f"Error starting conversation: {e}")
+#         return jsonify({"error": str(e)}), 500
 
 
 
