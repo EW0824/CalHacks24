@@ -7,18 +7,17 @@ from flask import Flask, request, jsonify, Response
 from datetime import datetime
 from cartesia import Cartesia
 from dotenv import load_dotenv
-from flask import Flask, request, jsonify
 from hume import AsyncHumeClient
 from hume.expression_measurement.batch import Face, Models
 from hume.expression_measurement.batch.types import InferenceBaseRequest
 
 from transcription import extract_video_audio
-from utils import transcribe_video
+# from utils import transcribe_video
 
-from EVI.authenticator import Authenticator
-from EVI.connection import Connection
-from EVI.devices import AudioDevices
-from EVI.evi import start_conversation
+# from EVI.authenticator import Authenticator
+# from EVI.connection import Connection
+# from EVI.devices import AudioDevices
+# from EVI.evi import start_conversation
 # from EVI.transcriber import Transcriber
 
 API_KEY = os.getenv("API_KEY")
@@ -187,7 +186,6 @@ def after_request(response):
     return add_cors_headers(response)
 
 
-
 # ########
 # # EVI API
 # ########
@@ -208,16 +206,16 @@ def after_request(response):
 #         # Start the conversation
 #         response = start_conversation(user_message)
 #         return jsonify(response), 200
-    
+
 #     except Exception as e:
 #         print(f"Error starting conversation: {e}")
 #         return jsonify({"error": str(e)}), 500
 
 
-
 ########
 # POST PROCESSING
 ########
+
 
 @app.route("/api/postVoice", methods=["POST", "OPTIONS"])
 async def upload_video() -> tuple:

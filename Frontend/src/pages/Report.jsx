@@ -27,8 +27,8 @@ const Report = ({ isDarkTheme, setIsDarkTheme }) => {
 	const [qaFeedback, setQaFeedback] = useState("");
 	const [score, setScore] = useState(0);
 	const [video, setVideo] = useState(null);
-	const [questions, setQuestions] = useState("");
-	const [response, setResponse] = useState("");
+	const [questions, setQuestions] = useState([]);
+	const [response, setResponse] = useState([]);
 
 	useEffect(() => {
 		try {
@@ -37,14 +37,14 @@ const Report = ({ isDarkTheme, setIsDarkTheme }) => {
 			setQaFeedback(localStorage.getItem("qaFeedback"));
 			setScore(localStorage.getItem("score"));
 			setVideo(localStorage.getItem("video"));
-			setQuestions(localStorage.getItem("questions"));
-
+			const q = JSON.parse(localStorage.getItem("questions"));
 			const res = JSON.parse(localStorage.getItem("responses"));
-			let responses = "";
-			for (const r of res) {
-				for (const x of Object.values(r)) responses += `${x}\n\n`;
-			}
-			setResponse(responses);
+
+			const responsesArray = res.map((r) => Object.values(r).join("\n"));
+			setResponse(responsesArray);
+
+			const questionsArray = q.map((question) => question);
+			setQuestions(questionsArray);
 		} catch (error) {
 			console.error(error);
 		}
@@ -127,7 +127,15 @@ const Report = ({ isDarkTheme, setIsDarkTheme }) => {
 						className={`${isDarkTheme ? "text-white bg-gray-800" : "text-black bg-white"}  shadow-md rounded-lg p-4 mb-4`}
 					>
 						<h2 className="text-2xl font-semibold mb-4">Questions</h2>
-						<p>{questions}</p>
+						<p>
+							{questions.map((q, i) => (
+								<ul key={`${i}${q}`}>
+									<li>
+										{i + 1}. {q}
+									</li>
+								</ul>
+							))}
+						</p>
 					</div>
 
 					{/* Response Component */}
@@ -135,7 +143,15 @@ const Report = ({ isDarkTheme, setIsDarkTheme }) => {
 						className={`${isDarkTheme ? "text-white bg-gray-800" : "text-black bg-white"}  shadow-md rounded-lg p-4`}
 					>
 						<h2 className="text-2xl font-semibold mb-4">Response</h2>
-						<p>{response}</p>
+						<p>
+							{response.map((q, i) => (
+								<ul key={`${i}${q}`}>
+									<li>
+										{i + 1}. {q}
+									</li>
+								</ul>
+							))}
+						</p>
 					</div>
 				</div>
 

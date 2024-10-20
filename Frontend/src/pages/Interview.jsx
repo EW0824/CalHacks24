@@ -26,7 +26,12 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 	});
 
 	const askQuestion = async (question) => {
-		setQuestions((prev) => [...prev, question]);
+		// setQuestions((prev) => [...prev, question]);
+		setQuestions((prev) => {
+			const updatedQuestions = [...prev, question];
+			localStorage.setItem("questions", JSON.stringify(updatedQuestions));
+			return updatedQuestions;
+		});
 
 		const response = await tts.buffer({
 			model_id: "sonic-english",
@@ -49,10 +54,15 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 		if (role === "assistant") {
 			await askQuestion(content);
 		}
+
+		let newRole = "User";
+		if (role === "assistant") {
+			newRole = "Interviewer";
+		}
 		// Push new message to the conversation history state
 		setConversationHistory((prevHistory) => [
 			...prevHistory,
-			{ role, content },
+			{ role: newRole, content: content },
 		]);
 	};
 
@@ -181,12 +191,13 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 			const qaFeedback = feedbackResponse.data.qaFeedback;
 			const score = feedbackResponse.data.score;
 
+			console.log(localStorage.getItem("questions"));
+
 			localStorage.setItem("behavior", JSON.stringify(behaviors));
 			localStorage.setItem("behaviorFeedback", behaviorFeedback);
 			localStorage.setItem("qaFeedback", qaFeedback);
 			localStorage.setItem("score", score);
 			localStorage.setItem("video", URL.createObjectURL(videoBlob));
-			localStorage.setItem("questions", questions);
 			localStorage.setItem("responses", JSON.stringify(transcript));
 		} catch (error) {
 			setModalVisible(false);
