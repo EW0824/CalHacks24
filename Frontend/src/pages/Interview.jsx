@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
-import interviewerImage from "/interviewer.jpg"; // Ensure this path is correct
 import elon from "/elon.png";
 import { SunIcon, MoonIcon } from "@heroicons/react/outline"; // Install heroicons if you haven't
 import Modal from "../components/Modal.jsx";
-import { connectToHume, captureAudio, stopRecording, disconnectFromHume } from './EVI.ts';
+import { connectToHume, captureAudio, disconnectFromHume } from "./EVI.ts";
+// import { useTTS } from "@cartesia/cartesia-js/react";
 
 // could be interviewer based for practice
 // could be for companies to evaluate people
@@ -17,51 +17,42 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 	const [loading, setLoading] = useState(true);
 	const [questions, setQuestions] = useState([]);
 
-	// Hume
-	const [conversationHistory, setConversationHistory] = useState([]);  // Holds conversation history
+	const [conversationHistory, setConversationHistory] = useState([]); // Holds conversation history
 	const [socket, setSocket] = useState(null); // Web socket
 
-	const askQuestion = async (question) => {
-		try {
-			setQuestions((prev) => [...prev, question]);
+	// const tts = useTTS({
+	// 	apiKey: import.meta.env.VITE_CARTESIA_API_KEY,
+	// 	sampleRate: 44100,
+	// });
 
-			const response = await axios.post(
-				"http://localhost:8080/api/speak",
-				{ question: question },
-				{
-					headers: {
-						"Content-Type": "application/json",
-					},
-					responseType: "arraybuffer", // Ensure response is treated as binary data
-				},
-			);
+	// const askQuestion = async (question) => {
+	// 	setQuestions((prev) => [...prev, question]);
 
-			// Create a blob from the response data and save it for manual testing
-			const audioBlob = new Blob([response.data], { type: "audio/wav" });
-			const audioUrl = URL.createObjectURL(audioBlob);
+	// 	const response = await tts.buffer({
+	// 		model_id: "sonic-english",
+	// 		voice: {
+	// 			mode: "id",
+	// 			id: "a0e99841-438c-4a64-b679-ae501e7d6091",
+	// 		},
+	// 		transcript: question,
+	// 	});
 
-			const audio = new Audio(audioUrl);
-			audio.play();
-		} catch (error) {
-			console.error("Error playing audio:", error);
-		}
-	};
-
-
+	// 	await tts.play();
+	// };
 
 	/*
 		Handle message received from Hume
 	*/
-	const handleMessage = (role, content) => {
-		console.log("Received message from Hume:", {role, content});
+	const handleMessage = async (role, content) => {
+		console.log("Received message from Hume:", { role, content });
 		// // askQuestion(content)
-		if (role === 'assistant') {
-			askQuestion(content)
+		if (role === "assistant") {
+			// await askQuestion(content);
 		}
 		// Push new message to the conversation history state
-		setConversationHistory(prevHistory => [
-		  ...prevHistory,
-		  { role, content }
+		setConversationHistory((prevHistory) => [
+			...prevHistory,
+			{ role, content },
 		]);
 	};
 
@@ -319,12 +310,11 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 				<div>
 					{/* Display conversation history */}
 					{conversationHistory.map((message, index) => (
-					<p key={index}>
-						<strong>{message.role}:</strong> {message.content}
-					</p>
+						<p key={index}>
+							<strong>{message.role}:</strong> {message.content}
+						</p>
 					))}
 				</div>
-
 			</div>
 
 			<div className="text-center">
