@@ -39,6 +39,13 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 	};
 
 	const startVideo = async () => {
+		localStorage.setItem("behavior", null);
+		localStorage.setItem("behaviorFeedback", null);
+		localStorage.setItem("qaFeedback", null);
+		localStorage.setItem("score", null);
+		localStorage.setItem("video", null);
+		localStorage.setItem("questions", null);
+		localStorage.setItem("responses", null);
 		try {
 			mediaStream.current = await navigator.mediaDevices.getUserMedia({
 				video: true, // Request video stream
@@ -105,14 +112,13 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 			const formData = new FormData();
 			formData.append("file", videoBlob, "recording.mp4");
 
-			const expressionResponse = await axios.post(
-				"http://localhost:8080/api/postExpressions",
-				formData,
-				{
-					headers: { "Content-Type": "multipart/form-data" },
-				},
-			);
-			console.log(expressionResponse);
+			// const expressionResponse = await axios.post(
+			// 	"http://localhost:8080/api/postExpressions",
+			// 	formData,
+			// 	{
+			// 		headers: { "Content-Type": "multipart/form-data" },
+			// 	},
+			// );
 
 			const voiceResponse = await axios.post(
 				"http://localhost:8080/api/postVoice",
@@ -121,6 +127,7 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 					headers: { "Content-Type": "multipart/form-data" },
 				},
 			);
+			console.log(voiceResponse);
 
 			setLoading(false);
 
@@ -149,6 +156,8 @@ const Interview = ({ isDarkTheme, setIsDarkTheme }) => {
 			for (const key in behaviors) {
 				behaviors[key] = behaviors[key].sum / behaviors[key].count;
 			}
+
+			console.log(behaviors);
 
 			const feedbackResponse = await axios.post(
 				"http://localhost:8080/api/postFeedback",

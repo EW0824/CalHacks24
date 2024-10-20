@@ -1,12 +1,8 @@
 import io
 import os
-import subprocess
-import whisper
 import tempfile
 from flask import Flask, request, jsonify, Response
-import glob
 import asyncio
-from moviepy.editor import VideoFileClip
 from hume import AsyncHumeClient
 from hume.expression_measurement.batch import Face, Models
 from hume.expression_measurement.batch.types import InferenceBaseRequest
@@ -14,6 +10,7 @@ from datetime import datetime
 from cartesia import Cartesia
 from dotenv import load_dotenv
 import wave
+from transcription import extract_video_audio
 
 API_KEY = os.getenv("API_KEY")
 
@@ -22,43 +19,11 @@ load_dotenv()
 app = Flask(__name__)
 
 
-def split_video(file, segment_length, output_dir):
-    with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_file:
-        temp_file.write(file.read())
-        temp_file.flush()
-
-        print("Enter split video")
-        clip = VideoFileClip(temp_file.name)
-        print(clip)
-        duration = clip.duration
-
-        start_time = 0
-        i = 1
-
-        # Extract the filename without extension
-        # Create output directory if it doesn't exist
-        os.makedirs(output_dir, exist_ok=True)
-        print(output_dir)
-        while start_time < duration:
-            end_time = min(start_time + segment_length, duration)
-            output = os.path.join(output_dir, f"{i}.mp4")
-            clip.subclip(start_time, end_time).write_videofile(
-                output, codec="libx264", audio_codec="aac"
-            )
-            start_time = end_time
-            i += 1
-        return i - 1
-
-
 def get_top_3_facs(predictions):
     top_facs_per_clip = []  # List to hold results for all clips
 
     for pred in predictions:  # Each file
-        print("source")
-        print(pred.source)
-
         for prediction in pred.results.predictions:  # Per file
-            print(f"file: {prediction.file}")
             facs_map = {}
 
             for grouped_preds in prediction.models.face.grouped_predictions:
@@ -208,50 +173,8 @@ def after_request(response):
     return add_cors_headers(response)
 
 
-def extract_text(video_file_path: str) -> str:
-    """Extracts audio from a video file using FFmpeg via subprocess."""
-    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as audio_temp_file:
-        audio_file_path = audio_temp_file.name
-
-        # FFmpeg command to extract audio
-        command = [
-            "ffmpeg",
-            "-i",
-            video_file_path,  # Input video file
-            "-ac",
-            "1",  # Convert to mono
-            "-ar",
-            "16000",  # Set sampling rate to 16kHz
-            audio_file_path,  # Output audio file
-            "-y",  # Overwrite output file if it exists
-        ]
-
-        # Run the FFmpeg command
-        subprocess.run(command, check=True)  # Raises CalledProcessError on failure
-
-        # Load the Whisper model and perform transcription
-        model = whisper.load_model("base")
-        result = model.transcribe(audio_file_path)
-
-    os.remove(audio_file_path)  # Clean up
-    return result["text"]
-
-
-def transcribe_video(video_file: io.BytesIO) -> str:
-    """Transcribes the given video file using Whisper."""
-    with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_video_file:
-        temp_video_file.write(video_file.read())
-        temp_video_file.flush()  # Ensure it's written before we read
-
-        # Extract audio using FFmpeg
-        text = extract_text(temp_video_file.name)
-
-    os.remove(temp_video_file.name)  # Clean up
-    return text
-
-
 @app.route("/api/postVoice", methods=["POST", "OPTIONS"])
-def upload_video() -> tuple:
+async def upload_video() -> tuple:
     if request.method == "OPTIONS":
         return jsonify({}), 200  # Respond to preflight request
 
@@ -267,9 +190,39 @@ def upload_video() -> tuple:
         file.save(video_buffer)
         video_buffer.seek(0)
 
-        transcription_text = transcribe_video(video_buffer)
+        with tempfile.NamedTemporaryFile(
+            suffix=".mp4", delete=False
+        ) as temp_video_file:
+            temp_video_file.write(video_buffer.read())
+            temp_video_file.flush()
+            all_transcriptions, video_files, audio_files = extract_video_audio(
+                temp_video_file.name
+            )
+            print(all_transcriptions, video_files)
 
-        return jsonify({"transcription": transcription_text}), 200
+            client = AsyncHumeClient(api_key=API_KEY)
+
+            local_filepaths = [open(file, "rb") for file in video_files]
+            face_config = Face(facs={})
+            models_chosen = Models(face=face_config)
+            stringified_configs = InferenceBaseRequest(models=models_chosen)
+            job_id = await client.expression_measurement.batch.start_inference_job_from_local_file(
+                json=stringified_configs, file=local_filepaths
+            )
+            await poll_for_completion(client, job_id, timeout=120)
+            job_predictions = (
+                await client.expression_measurement.batch.get_job_predictions(id=job_id)
+            )
+            top_facs_scores = get_top_3_facs(job_predictions)
+
+        for file in video_files + audio_files:
+            os.remove(file)
+
+        os.remove(temp_video_file.name)
+
+        return jsonify(
+            {"transcription": all_transcriptions, "behavior": top_facs_scores}
+        ), 200
     except Exception as e:
         print(f"Error during transcription: {e}")
         return jsonify({"error": str(e)}), 500
@@ -329,58 +282,6 @@ def return_voice():
                 "Cache-Control": "no-cache",
             },
         )
-
-    except Exception as e:
-        print(f"Error processing expressions: {e}")
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/postExpressions", methods=["POST", "OPTIONS"])
-async def return_expressions() -> tuple:
-    if request.method == "OPTIONS":
-        return jsonify({}), 200  # Respond to preflight request
-
-    file = request.files["file"]
-    print(file)
-    if not file.filename:
-        return jsonify({"error": "No file selected for uploading"}), 400
-
-    try:
-        print("Entered try")
-        output_folder = "./split_videos"
-        segment_length = 5  # Change to your desired segment length
-
-        video_buffer = io.BytesIO()
-        file.save(video_buffer)
-        video_buffer.seek(0)
-
-        # Split the video into segments
-        split_video(video_buffer, segment_length, output_folder)
-        # Initialize Hume client
-        client = AsyncHumeClient(api_key=API_KEY)
-        print("init client")
-
-        video_files = glob.glob("./split_videos/*.mp4")
-        local_filepaths = [open(file, "rb") for file in video_files]
-        face_config = Face(facs={})
-        models_chosen = Models(face=face_config)
-        stringified_configs = InferenceBaseRequest(models=models_chosen)
-        job_id = await client.expression_measurement.batch.start_inference_job_from_local_file(
-            json=stringified_configs, file=local_filepaths
-        )
-        print("about to poll")
-        await poll_for_completion(client, job_id, timeout=120)
-        print("polling")
-        job_predictions = await client.expression_measurement.batch.get_job_predictions(
-            id=job_id
-        )
-        print("predictions")
-        top_facs_scores = get_top_3_facs(job_predictions)
-        print("top faces")
-
-        for file in video_files:
-            os.remove(file)
-        return jsonify({"top_facs_scores": top_facs_scores}), 200
 
     except Exception as e:
         print(f"Error processing expressions: {e}")
