@@ -34,9 +34,30 @@ const Report = ({ isDarkTheme, setIsDarkTheme }) => {
 			setBehaviors(JSON.parse(localStorage.getItem("behavior")));
 			setFeedback(JSON.parse(localStorage.getItem("feedback")));
 			setVideo(localStorage.getItem("video"));
-			setScore(localStorage.getItem("score"));
+			// setScore(localStorage.getItem("score"));
 			const q = JSON.parse(localStorage.getItem("questions"));
 			const res = JSON.parse(localStorage.getItem("responses"));
+
+			const feedback = JSON.parse(localStorage.getItem("feedback"));
+			if (Array.isArray(feedback)) {
+				let count = 0;
+				let tempScore = 0;
+				for (let r of feedback) {
+					r = r.toLowerCase();
+					const parts = r.split("score:"); // split string by "score:" delimiter
+					console.log(parts);
+					if (parts.length > 1) {
+						const scoreText = parts[1].trim().split(" ")[0];
+						const s = Number.parseInt(scoreText, 10);
+						if (s > 0) {
+							count++;
+							tempScore += s;
+						}
+					}
+				}
+				tempScore /= count;
+				setScore(tempScore);
+			}
 
 			const responsesArray = res?.map((r) => Object.values(r).join("\n"));
 			setResponse(responsesArray);

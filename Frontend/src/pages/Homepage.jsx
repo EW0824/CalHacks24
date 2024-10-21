@@ -13,7 +13,9 @@ function Homepage({ isDarkTheme, setIsDarkTheme }) {
 			<header
 				className={`${isDarkTheme ? "bg-gray-800" : "bg-blue-600"} w-full py-6 text-center`}
 			>
-				<h1 className="text-4xl font-bold text-white">Ace Your Interview</h1>
+				<h1 className="text-4xl font-bold text-white">
+					Welcome to SharkProof!
+				</h1>
 				<p className="mt-2 text-lg text-white">
 					An AI-powered tool to enhance your interview skills.
 				</p>
@@ -49,7 +51,7 @@ function Homepage({ isDarkTheme, setIsDarkTheme }) {
 					<h2
 						className={`text-3xl font-semibold ${isDarkTheme ? "text-gray-100" : "text-gray-800"} mb-4`}
 					>
-						Welcome to SharkProof!
+						Ace Your Interview
 					</h2>
 					<p
 						className={`mb-4 ${isDarkTheme ? "text-gray-300" : "text-gray-600"}`}

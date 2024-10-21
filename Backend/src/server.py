@@ -272,11 +272,13 @@ def get_feedback() -> tuple:
 
     try:
         data = request.get_json()
-        transcript = str(data.get("transcript", "no response"))
-        questions = data.get("questions", None)  # No need for explicit typing here
+        transcript = data.get("transcript", "no response")
+        questions = data.get("questions", None)
         length_of_transcript = data.get("length", len(questions))
         behaviors = data.get("behaviors", None)
         emotions = data.get("emotions", None)
+
+        # Now transcript_dict should be correctly processed
 
         client = Groq(
             api_key=GROQ_KEY,
@@ -364,64 +366,6 @@ def get_feedback() -> tuple:
             "Triumph": 0,
         }
 
-        # LLM Quality Scoring Function using Groq Client
-        def get_llm_quality_score_groq(transcript, questions, behaviors, emotions):
-            try:
-                client = Groq(api_key=GROQ_KEY)
-                length = min(len(questions), len(transcript))
-                quality_scores = []
-                for i in range(length):
-                    chat_completion = client.chat.completions.create(
-                        messages=[
-                            {
-                                "role": "system",
-                                "content": """
-                                The response should be strictly less than 70 words. You are an interview coach.
-                                Your task is to evaluate the performance and give specific feedback on how the user
-                                performs in their interview. Make your performance assessment based on a variety of data
-                                sources including facial expressions, quality and depth of answers, and emotions.
-                                Outline both strengths and weaknesses of the user including ways to improve. Be extremely thorough and specific in your feedback.
-                                Here are some notes about the data:
-                                The transcript is a dictionary where the key is the finish time in seconds of the value in the recorded video and the value is the actual text the user spoke.
-                                The questions are the questions the LLM asks which are in the form of an array.
-                                The emotions is a dictionary of length 48 containing an emotion as a key and its corresponding score as a value.
-                                """,
-                            },
-                            {
-                                "role": "user",
-                                "content": f"""
-                                Match the question, '{questions[i]}', with the response present in the transcript, '{transcript}'.
-                                Make use of the timestamps, which are the keys in the transcript, to identify which questions the transcript data points belong to.
-                                Also, consider the behaviors, '{behaviors}', of the user as they answer the questions.
-                                And take into account the emotions, '{emotions}', of the user as they answer these interview questions.
-                                Provide comprehensive feedback to the user on their interview performance.
-                                Address things they did well and areas for improvement. Reference the quality, relevance, and completeness of the response as well as the user's emotions and behaviors.
-                                Assign a score out of 40 for the response quality based on psychological literature on successful interviews.
-                                """,
-                            },
-                        ],
-                        model="llama-3.1-8b-instant",
-                    )
-                    # Parse the score from the LLM response (assuming LLM returns a clear score statement)
-                    feedback = chat_completion.choices[0].message.content
-                    try:
-                        # Extract the score if mentioned in the feedback (this part may change based on LLM response format)
-                        score = float(
-                            [word for word in feedback.split() if word.isdigit()][0]
-                        )  # Example parsing for a numeric score
-                        quality_scores.append(score)
-                    except (IndexError, ValueError):
-                        quality_scores.append(
-                            30
-                        )  # Assign a default score if parsing fails
-                # Calculate the average quality score across all questions
-                return (
-                    sum(quality_scores) / len(quality_scores) if quality_scores else 0
-                )
-            except Exception as e:
-                print(f"Error fetching LLM quality score: {e}")
-                return 20  # Default value if the LLM call fails
-
         def calculate_emotional_score(emotions, emotion_weights):
             total_score = 0
             for interval in emotions:
@@ -460,19 +404,15 @@ def get_feedback() -> tuple:
             facial_expression_score = calculate_updated_facial_expression_score(
                 facial_expressions, facial_expression_weights
             )
-            # Fetch the LLM quality score using the Groq integration
-            llm_quality_score = get_llm_quality_score_groq(
-                transcript, questions, behaviors, emotions
-            )
             # Normalize and combine scores (weights can be adjusted based on the importance of each factor)
             total_emotional_score = max(
-                0, min(emotional_score, 40)
+                0, min(emotional_score, 50)
             )  # Cap at 40 for normalization
             total_facial_score = max(
-                0, min(facial_expression_score, 20)
+                0, min(facial_expression_score, 50)
             )  # Cap at 20 for normalization
             # Final score calculation with LLM quality score
-            final_score = total_emotional_score + total_facial_score + llm_quality_score
+            final_score = total_emotional_score + total_facial_score
             return final_score
 
         facial_expressions = behaviors  # For this example, assuming behaviors and facial_expressions are similar
@@ -486,7 +426,7 @@ def get_feedback() -> tuple:
             behaviors,
         )
         print("Final Interview Score (Out of 100):", final_interview_score)
-
+        print("Transcript is: ", transcript)
         length = min(len(questions), length_of_transcript)
         print("transcript", length_of_transcript, "question: ", len(questions))
 
@@ -497,36 +437,28 @@ def get_feedback() -> tuple:
                 messages=[
                     {
                         "role": "system",
-                        "content": """"
-                The response should be strictly less than 70 words. You are an interview coach. 
-                Your task is to evaluate the performance and give specific feedback on how 
-                the user performs in their interview. Make your performance assessment based on a 
-                variety of data sources including facial expressions, quality and depth of answers, 
-                and emotions. Outline both strengths and weaknesses of the user including 
-                ways to improve. Be extremely thorough and specific in your feedback.
-                Here are some notes about the data:
-                The transcript is a dictionary where the key is the finish time in seconds
-                of the value in the recorded video and the value is the actual text the
-                user spoke. The questions are the questions the LLM asks which are in the
-                form of an array. The emotions is a dictionary of length 48 containing an
-                emotion as a key and its corresponding score as a value.
-                """,
+                        "content": """
+                                The response should be strictly less than 70 words. You are an interview coach.
+                                Your task is to evaluate the performance and give specific feedback on how the user
+                                performs on a specific question. Make your performance assessment based on a variety of data
+                                sources including facial expressions, quality and depth of answers, and emotions.
+                                Outline both strengths and weaknesses of the user including ways to improve. Be extremely thorough and specific in your feedback.
+                                Here is an example output that the response MUST adhere to: 
+                                Question: question verbatim. 
+                                User's Response to Question: over here describe how well or not the user 
+                                answered the question.
+                                Emotion: Over here describe the top 3 emotions expressed by the user.
+                                Behavior: Over here describe the top 3 facial expressions shown by the user.
+                                Score: Finally here output a score out of 100 combining all 3 metrics above.
+                                """,
                     },
                     {
                         "role": "user",
                         "content": f"""
-                "The response should be strictly less than 70 words. Match the questions, {questions[i]}, with the responses present in the transcripts,
-                {transcript}. Make use of the time stamps which are the keys in the transcript
-                to identify which questions the transcript data points belong to. Also make sure
-                to take into account the behaviors, {behaviors} of the users as they answer the
-                questions. And also take into account the emotions, {emotions} of the users as they
-                answer these interview questions. You need to give comprehensive feedback to the
-                user about how they did on their interview. Talk about things they did well as well
-                as things they need to improve upon. To do this, reference their response content,
-                its relevance, its quality, as well as the user's emotions and behaviors. Give them a
-                question by question breakdown of what they can do better. And lastly, give them an
-                overall interview success score based on psychological literature on successful
-                interviews."
+                Questions: {questions[i]},
+                Transcript: {transcript},
+                Behaviors: {behaviors},
+                Emotions: {emotions} 
                 """,
                     },
                 ],
@@ -536,7 +468,7 @@ def get_feedback() -> tuple:
 
         print(answers)
 
-        return jsonify({"feedback": answers, "score": final}), 200
+        return jsonify({"feedback": answers, "score": final_interview_score}), 200
     except Exception as e:
         print(f"Error getting feedback: {e}")
         return jsonify({"error": str(e)}), 500
